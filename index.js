@@ -65,8 +65,31 @@ const commands = [
                     { name: "placeholder", value: "placeholder" },
                 ],
             },
+            {
+                name: "type",
+                type: 3, // STRING type
+                description: "Choose between vaginal or anal",
+                required: false,
+                choices: [
+                    { name: "Vaginal", value: "vaginal" },
+                    { name: "Anal", value: "anal" },
+                ],
+            },
         ],
-    },
+    }
+    {
+        name: "lick",
+        description: "👅 Lick someone!",
+        options: [
+            {
+                name: "user",
+                type: 6, // USER type
+                description: "User to lick",
+                required: true,
+            },
+        ],
+    }
+    
 ];
 
 
@@ -117,17 +140,17 @@ client.on("interactionCreate", async (interaction) => {
             "https://static1.e926.net/data/92/6a/926aa2a696d91ca9c78510646df0ff1c.jpg",
             "https://static1.e926.net/data/35/09/3509727802c7391c9f1c5ff3be8dd99f.jpg",
         ];
-        const randomGif = hugGifs[Math.floor(Math.random() * hugGifs.length)];
+        const randomIndex = Math.floor(Math.random() * hugGifs.length);
+        console.log(`Hug GIF Index: ${randomIndex}`);
+        const randomGif = hugGifs[randomIndex];
 
         let embedDescription;
         let gifToUse;
 
         if (customGif) {
-            // Fixed: Ensure custom GIFs always use a set message
             embedDescription = `${sender} sends a special hug to ${recipient}! 💞`;
             gifToUse = customGif;
         } else {
-            // Use random message if no custom GIF is provided
             const hugMessages = [
                 `${sender} wraps ${recipient} in a big warm hug! 🤗`,
                 `Aww, ${sender} gives ${recipient} a loving hug! 💖`,
@@ -140,7 +163,6 @@ client.on("interactionCreate", async (interaction) => {
             gifToUse = randomGif;
         }
 
-        // Create embed
         const embed = new EmbedBuilder()
             .setTitle("🤗 Hug Alert!")
             .setDescription(embedDescription)
@@ -155,54 +177,86 @@ client.on("interactionCreate", async (interaction) => {
         const sender = interaction.user;
         const recipient = interaction.options.getUser("user");
         let pose = interaction.options.getString("pose");
-    
+        let type = interaction.options.getString("type");
+
         if (recipient.id === sender.id) {
             return interaction.reply({
                 content: "❌ You can't do this to yourself...",
                 ephemeral: true,
             });
         }
-    
-        // Pose options
+
         const poseOptions = ["placeholder", "placeholder", "placeholder", "placeholder"];
-    
-        // If no pose is specified, pick one at random
         if (!pose) {
             pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
         }
-    
-        // Predefined images
+
+        if (!type) {
+            type = Math.random() < 0.5 ? "vaginal" : "anal";
+        }
+
         const images = {
-            placeholder: [""],
-            placeholder: [""],
-            placeholder: [""],
-            placeholder: [""],
+            vaginal: {
+                placeholder: ["gif1", "gif2", "gif3"],
+            },
+            anal: {
+                placeholder: ["gif4", "gif5", "gif6"],
+            },
         };
-    
-        // Predefined text responses
-        const messages = {
-            placeholder: `${sender} x ${recipient} x`,
-            placeholder: `${sender} x ${recipient} x`,
-            placeholder: `${sender} x ${recipient} x`,
-            placeholder: `${sender} x ${recipient} x`,
-        };
-    
-        // Pick a random image from the chosen pose
-        const image = images[pose][Math.floor(Math.random() * images[pose].length)];
-        const responseText = messages[pose];
-    
-        // Create embed
+
+        if (!images[type] || !images[type][pose] || images[type][pose].length === 0) {
+            console.error(`❌ No images found for type: ${type}, pose: ${pose}`);
+            return interaction.reply({ content: "❌ No images available!", ephemeral: true });
+        }
+
+        const randomIndex = Math.floor(Math.random() * images[type][pose].length);
+        console.log(`Selected GIF Index for ${type}/${pose}: ${randomIndex}`);
+        const image = images[type][pose][randomIndex];
+
         const embed = new EmbedBuilder()
             .setTitle("🔥 Steamy Interaction!")
-            .setDescription(responseText)
+            .setDescription(`${sender} is having fun with ${recipient} in the **${pose}** position! 😏`)
             .setImage(image)
             .setColor("#FF007F")
             .setTimestamp();
-    
+
         await interaction.reply({ embeds: [embed] });
     }
-        
 
+    if (interaction.commandName === "lick") {
+        const sender = interaction.user;
+        const recipient = interaction.options.getUser("user");
+        let type = interaction.options.getString("type") || "playful";
+
+        if (recipient.id === sender.id) {
+            return interaction.reply({
+                content: "❌ You can't lick yourself... I would have made it work if you could.",
+                ephemeral: true,
+            });
+        }
+
+        const images = {
+            playful: ["gif7", "gif8", "gif9"],
+        };
+
+        if (!images[type] || images[type].length === 0) {
+            console.error(`❌ No images found for type: ${type}`);
+            return interaction.reply({ content: "❌ No images available!", ephemeral: true });
+        }
+
+        const randomIndex = Math.floor(Math.random() * images[type].length);
+        console.log(`Selected GIF Index for ${type}: ${randomIndex}`);
+        const image = images[type][randomIndex];
+
+        const embed = new EmbedBuilder()
+            .setTitle("👅 Get licked!")
+            .setDescription(`${sender} licks ${recipient}! 😜`)
+            .setImage(image)
+            .setColor("#FF007F")
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed] });
+    }
 });
 
 // Login bot
