@@ -215,7 +215,7 @@ client.on("interactionCreate", async (interaction) => {
 
         const embed = new EmbedBuilder()
             .setTitle("🔥 Steamy Interaction!")
-            .setDescription(`${sender} is having fun with ${recipient} in the **${pose}** position! 😏`)
+            .setDescription(`${sender} is having fun with ${recipient}! 😏`)
             .setImage(image)
             .setColor("#FF007F")
             .setTimestamp();
