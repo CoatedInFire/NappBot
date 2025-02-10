@@ -4,11 +4,10 @@
     "description": "A simple Discord bot",
     "main": "index.js",
     "scripts": {
-      "start": "node index.js"
+        "start": "node index.js"
     },
     "dependencies": {
-      "discord.js": "^14.7.1",
-      "dotenv": "^16.0.3"
+        "discord.js": "^14.7.1",
+        "dotenv": "^16.4.7"
     }
-  }
-  
+}

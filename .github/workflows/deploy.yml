@@ -1,4 +1,4 @@
-name: Deploy Discord Bot
+name: Auto Deploy to Replit
 
 on:
   push:
@@ -8,20 +8,13 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run the bot
-        env:
-          TOKEN: ${{ secrets.TOKEN }}
-        run: node index.js
+      - name: Update Replit
+        run: |
+          curl -X POST "https://api.replit.com/v0/deploy" \
+          -H "Authorization: Bearer ${{ secrets.REPLIT_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{}'
