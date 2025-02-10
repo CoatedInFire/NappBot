@@ -43,7 +43,32 @@ const commands = [
             },
         ],
     },
+    {
+        name: "fuck",
+        description: "😏 Have some fun with someone.",
+        options: [
+            {
+                name: "user",
+                type: 6, // USER type
+                description: "User to have fun with",
+                required: true,
+            },
+            {
+                name: "pose",
+                type: 3, // STRING type
+                description: "Choose a pose",
+                required: false,
+                choices: [
+                    { name: "placeholder", value: "placeholder" },
+                    { name: "placeholder", value: "placeholder" },
+                    { name: "placeholder", value: "placeholder" },
+                    { name: "placeholder", value: "placeholder" },
+                ],
+            },
+        ],
+    },
 ];
+
 
 client.once("ready", async () => {
     console.log(`✅ Logged in as ${client.user.tag}!`);
@@ -125,6 +150,59 @@ client.on("interactionCreate", async (interaction) => {
 
         await interaction.reply({ embeds: [embed] });
     }
+
+    if (interaction.commandName === "fuck") {
+        const sender = interaction.user;
+        const recipient = interaction.options.getUser("user");
+        let pose = interaction.options.getString("pose");
+    
+        if (recipient.id === sender.id) {
+            return interaction.reply({
+                content: "❌ You can't do this to yourself...",
+                ephemeral: true,
+            });
+        }
+    
+        // Pose options
+        const poseOptions = ["placeholder", "placeholder", "placeholder", "placeholder"];
+    
+        // If no pose is specified, pick one at random
+        if (!pose) {
+            pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
+        }
+    
+        // Predefined images
+        const images = {
+            placeholder: [""],
+            placeholder: [""],
+            placeholder: [""],
+            placeholder: [""],
+        };
+    
+        // Predefined text responses
+        const messages = {
+            placeholder: `${sender} x ${recipient} x`,
+            placeholder: `${sender} x ${recipient} x`,
+            placeholder: `${sender} x ${recipient} x`,
+            placeholder: `${sender} x ${recipient} x`,
+        };
+    
+        // Pick a random image from the chosen pose
+        const image = images[pose][Math.floor(Math.random() * images[pose].length)];
+        const responseText = messages[pose];
+    
+        // Create embed
+        const embed = new EmbedBuilder()
+            .setTitle("🔥 Steamy Interaction!")
+            .setDescription(responseText)
+            .setImage(image)
+            .setColor("#FF007F")
+            .setTimestamp();
+    
+        await interaction.reply({ embeds: [embed] });
+    }
+        
+
 });
 
 // Login bot
