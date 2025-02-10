@@ -1,20 +1,21 @@
-name: Auto Deploy to Replit
+name: Keep Bot Running
 
 on:
   push:
-    branches:
-      - main
+  workflow_dispatch:
+  schedule:
+    - cron: "*/10 * * * *"  # Runs every 10 minutes
 
 jobs:
-  deploy:
+  run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      - name: Update Replit
-        run: |
-          curl -X POST "https://api.replit.com/v0/deploy" \
-          -H "Authorization: Bearer ${{ secrets.REPLIT_API_KEY }}" \
-          -H "Content-Type: application/json" \
-          -d '{}'
+      - uses: actions/checkout@v3
+      - name: Install Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: npm install
+      - name: Start bot
+        run: node index.js
