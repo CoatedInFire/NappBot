@@ -129,3 +129,12 @@ client.on("interactionCreate", async (interaction) => {
 
 // Login bot
 client.login(token);
+
+const express = require("express");
+const app = express();
+app.get("/", (req, res) => {
+    res.send("Bot is alive!");
+});
+app.listen(3000, () => {
+    console.log("✅ Bot is running 24/7");
+});
