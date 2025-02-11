@@ -240,7 +240,7 @@ client.on("interactionCreate", async (interaction) => {
         const sender = interaction.user;
         const recipient = interaction.options.getUser("user");
         let pose = interaction.options.getString("pose");
-        let type = interaction.options.getString("type");
+        let type = interaction.options.getString("sex");
     
         if (recipient.id === sender.id) {
             return interaction.reply({
@@ -379,25 +379,25 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.commandName === "e621") {
         const sender = interaction.user;
         const tags = interaction.options.getString("tags")?.split(" ") || [];
-
+    
         await interaction.deferReply(); // Defer reply to allow time for API fetch
-
+    
         const postData = await fetchE621Image(tags);
         if (!postData) {
             return interaction.editReply("❌ No results found!");
         }
-
+    
         // Create embed
         const embed = new EmbedBuilder()
             .setTitle("🔞 e621 Image Result")
             .setDescription(`**Artist(s):** ${postData.artists}\n**Characters:** ${postData.characters}`)
-            .setImage(postData.imageUrl)
+            .setImage(postData.imageUrl || "https://e621.net/static/logo.png") // Use fallback image if missing
             .setColor("#00549F")
             .setFooter({
                 text: `⭐ Score: ${postData.score} | ❤️ Favorites: ${postData.favCount} | 📌 Post ID: ${postData.postId}\nRequested by ${sender.tag}`,
-                iconURL: sender.displayAvatarURL()
+                iconURL: sender.displayAvatarURL(),
             });
-
+    
         // Create button linking to e621 post
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
@@ -405,9 +405,28 @@ client.on("interactionCreate", async (interaction) => {
                 .setStyle(ButtonStyle.Link)
                 .setURL(postData.postUrl)
         );
-
+    
         await interaction.editReply({ embeds: [embed], components: [row] });
+    }    
     }
+    // Commands
+    if (interaction.commandName === "cmds") {
+        const commands = await client.application.commands.fetch();
+        if (!commands.size) {
+            return interaction.reply({ content: "❌ No commands found!", ephemeral: true });
+        }
+    
+        const commandList = commands.map(cmd => `\`/${cmd.name}\` - ${cmd.description}`).join("\n");
+    
+        const embed = new EmbedBuilder()
+            .setTitle("📜 Available Commands")
+            .setDescription(commandList)
+            .setColor("#FFA500")
+            .setTimestamp();
+    
+        await interaction.reply({ embeds: [embed] });
+    }
+    
 }
     
 });
