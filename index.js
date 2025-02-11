@@ -931,17 +931,24 @@ client.on("interactionCreate", async (interaction) => {
 
       await interaction.reply({ embeds: [embed] });
     }
-    // Settings
+    // Settings Command
     if (interaction.commandName === "settings") {
+      await interaction.deferReply({ ephemeral: true });
+
       try {
+        const userId = interaction.user.id;
         const sex = (await getUserPreference(userId)) || "Random";
-        const globalCommands = await getTotalCommandsGlobal();
-        const mostUsedCommand = await getMostUsedCommand();
-        const mostUsedCommandCount = await getMostUsedCommandCount();
-        const topUser = await getTopUser();
-        const topUserTotalCommands = await getTotalCommands(
-          topUser.replace(/\D/g, "")
-        );
+        const totalCommands = (await getTotalCommands(userId)) || 0;
+        const favoriteCommand = (await getFavoriteCommand(userId)) || "None";
+        const globalCommands = (await getTotalCommandsGlobal()) || 0;
+        const mostUsedCommand = (await getMostUsedCommand()) || "None";
+        const mostUsedCommandCount = (await getMostUsedCommandCount()) || 0;
+
+        const topUser = (await getTopUser()) || "Unknown";
+        const topUserTotalCommands =
+          topUser !== "Unknown"
+            ? await getTotalCommands(topUser.replace(/\D/g, ""))
+            : 0;
 
         // **Enhanced Embed Formatting**
         const embed = new EmbedBuilder()
@@ -998,12 +1005,11 @@ client.on("interactionCreate", async (interaction) => {
             .setStyle(ButtonStyle.Primary)
         );
 
-        interaction.reply({ embeds: [embed], components: [row] });
+        await interaction.editReply({ embeds: [embed], components: [row] });
       } catch (error) {
-        console.error("Error fetching settings:", error);
-        interaction.reply({
+        console.error("❌ Error fetching settings:", error);
+        await interaction.editReply({
           content: "❌ An error occurred while fetching your settings.",
-          ephemeral: true,
         });
       }
     }
@@ -1013,11 +1019,33 @@ client.on("interactionCreate", async (interaction) => {
       const sex = interaction.options.getString("sex");
 
       await setUserPreference(sender.id, sex);
-
       await interaction.reply({
         content: `✅ Your preference has been set to **${sex}**!`,
         ephemeral: true,
       });
+    }
+
+    // Handle Modal Submissions
+    if (
+      interaction.isModalSubmit() &&
+      interaction.customId === "preference_modal"
+    ) {
+      const userId = interaction.user.id;
+      const sex = interaction.fields.getTextInputValue("sex_input") || "random";
+
+      try {
+        await setUserPreference(userId, sex);
+        await interaction.reply({
+          content: `✅ Preferences updated! Sex: ${sex}`,
+          ephemeral: true,
+        });
+      } catch (error) {
+        console.error("❌ Error updating preferences:", error);
+        await interaction.reply({
+          content: "⚠️ An error occurred while updating preferences.",
+          ephemeral: true,
+        });
+      }
     }
 
     // Handle Button Interactions
@@ -1051,13 +1079,13 @@ client.on("interactionCreate", async (interaction) => {
           await setUserPreference(userId, sex);
           await interaction.reply({
             content: `✅ Preferences updated! Sex: ${sex}`,
-            ephemeral: true,
+            flags: [MessageFlags.Ephemeral],
           });
         } catch (error) {
           console.error("❌ Error updating preferences:", error);
           await interaction.reply({
             content: "⚠️ An error occurred while updating preferences.",
-            ephemeral: true,
+            flags: [MessageFlags.Ephemeral],
           });
         }
       }
