@@ -408,7 +408,6 @@ client.on("interactionCreate", async (interaction) => {
     
         await interaction.editReply({ embeds: [embed], components: [row] });
     }    
-    }
     // Commands
     if (interaction.commandName === "cmds") {
         const commands = await client.application.commands.fetch();
@@ -426,9 +425,6 @@ client.on("interactionCreate", async (interaction) => {
     
         await interaction.reply({ embeds: [embed] });
     }
-    
-}
-    
 });
 
 client.once("ready", async () => {
@@ -446,7 +442,6 @@ client.once("ready", async () => {
         console.error("❌ Error updating commands:", error);
     }
 });
-
 // Login bot
 client.login(token);
 
