@@ -1,37 +1,3 @@
-if (global.fsLoaded) {
-    console.log("fs already loaded, skipping redeclaration.");
-} else {
-    global.fsLoaded = true;
-    const fs = require('fs');
-}
-
-const fs = require("fs");
-const profilesFile = "profiles.json";
-
-// Load user preferences
-let profiles = {};
-if (fs.existsSync(profilesFile)) {
-    profiles = JSON.parse(fs.readFileSync(profilesFile, "utf8"));
-}
-
-// Function to save profiles
-function saveProfiles() {
-    fs.writeFileSync(profilesFile, JSON.stringify(profiles, null, 4));
-}
-
-// Function to get a user's preference (default is "female")
-function getUserPreference(userId) {
-    if (profiles[userId]?.sex) {
-        return profiles[userId].sex;
-    }
-    return Math.random() < 0.5 ? "male" : "female"; // Random default
-}
-// Function to set a user's preference
-function setUserPreference(userId, sex) {
-    profiles[userId] = { sex };
-    saveProfiles();
-}
-
 require("dotenv").config();
 const {
     Client,
@@ -44,7 +10,18 @@ const {
     ButtonStyle,
 } = require("discord.js");
 
+let fs; // Declare fs outside the if block
+if (global.fsLoaded) {
+    console.log("fs already loaded, skipping redeclaration.");
+} else {
+    global.fsLoaded = true;
+    fs = require('fs');
+}
 
+const fetch = require("node-fetch");
+const express = require("express");
+
+const app = express();
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -53,13 +30,39 @@ const client = new Client({
     ],
 });
 
-// Get token and client ID from environment variables
 const token = process.env.TOKEN;
-const clientId = process.env.CLIENT_ID || "765387268557897799";
+const clientId = process.env.CLIENT_ID;
+const profilesFile = "profiles.json";
+// Load user preferences (or create an empty object if the file doesn't exist)
+let profiles = {};
+try {
+    const data = fs.readFileSync(profilesFile, "utf8");
+    profiles = JSON.parse(data);
+} catch (err) {
+    console.error(`Error loading ${profilesFile}:`, err);
+    // Initialize profiles if the file doesn't exist or is invalid.
+    profiles = { users: {} };  // Ensure the 'users' property exists
+}
 
-const fetch = require("node-fetch");
+// Function to save profiles
+function saveProfiles() {
+    fs.writeFileSync(profilesFile, JSON.stringify(profiles, null, 4));
+}
 
-// e621 API implementation
+// Function to get a user's preference (default is "random")
+function getUserPreference(userId) {
+    return profiles.users?.[userId]?.sex || "random"; // Default is now "random"
+}
+
+// Function to set a user's preference
+function setUserPreference(userId, sex) {
+    if (!profiles.users) {
+        profiles.users = {}; // Create 'users' if it doesn't exist
+    }
+    profiles.users[userId] = { sex };
+    saveProfiles();
+}
+
 async function fetchE621Image(tags = []) {
     const query = tags.join("+");
     const url = `https://e621.net/posts.json?tags=${query}&limit=1`;
@@ -80,75 +83,19 @@ async function fetchE621Image(tags = []) {
         }
 
         const post = data.posts[0];
-
-        // Extract artist(s) - If no artist is tagged, set to "Unknown"
         const artists = post.tags.artist.length > 0 ? post.tags.artist.join(", ") : "Unknown";
-
-        // Extract characters - Limit to 3
-        let characters = post.tags.character.slice(0, 3).join(", ");
-        if (!characters) characters = "No characters tagged";
-
-        // Get post statistics
+        const characters = post.tags.character.slice(0, 3).join(", ") || "No characters tagged";
         const score = post.score.total;
         const favCount = post.fav_count;
         const postId = post.id;
         const postUrl = `https://e621.net/posts/${postId}`;
         const imageUrl = post.file.url;
 
-        return {
-            imageUrl,
-            artists,
-            characters,
-            score,
-            favCount,
-            postId,
-            postUrl
-        };
+        return { imageUrl, artists, characters, score, favCount, postId, postUrl };
     } catch (error) {
         console.error("Error fetching image from e621:", error);
         return null;
     }
-}
-
-// Command Tracking
-const profilesPath = 'profiles.json';
-
-function trackCommandUsage(interaction) {
-    let profiles = {};
-    try {
-        profiles = JSON.parse(fs.readFileSync(profilesPath, 'utf8'));
-    } catch (err) {
-        console.error("Could not load profiles.json, creating a new one.");
-    }
-
-    const userId = interaction.user.id;
-    if (!profiles.users) profiles.users = {};
-    if (!profiles.users[userId]) {
-        profiles.users[userId] = {
-            sex: "random",
-            usage: {
-                total_commands: 0,
-                favorite_command: null,
-                command_counts: {}
-            }
-        };
-    }
-    // Update command usage
-    const commandName = `/${interaction.commandName}`;
-    const userStats = profiles.users[userId].usage;
-    // Update per-user command count
-    userStats.total_commands++;
-    userStats.command_counts[commandName] = (userStats.command_counts[commandName] || 0) + 1;
-    // Find favorite command (most used)
-    const sortedCommands = Object.entries(userStats.command_counts).sort((a, b) => b[1] - a[1]);
-    userStats.favorite_command = sortedCommands.length > 0 ? sortedCommands[0][0] : null;
-    // Update server-wide statistics
-    if (!profiles.server_stats) profiles.server_stats = { total_commands: 0, top_commands: {}, top_users: {} };
-    profiles.server_stats.total_commands++;
-    profiles.server_stats.top_commands[commandName] = (profiles.server_stats.top_commands[commandName] || 0) + 1;
-    profiles.server_stats.top_users[userId] = userStats.total_commands;
-    // Save changes to profiles.json
-    fs.writeFileSync(profilesPath, JSON.stringify(profiles, null, 2));
 }
 
 // Slash commands
@@ -266,20 +213,17 @@ const commands = [
             },
         ],
     },
-    
 ];
 
-
-// Handle slash commands
 client.on("interactionCreate", async (interaction) => {
     if (!interaction.isCommand()) return;
     trackCommandUsage(interaction);
-    
     // Ping
     if (interaction.commandName === "ping") {
-        await interaction.reply(
-            `🏓 Pong! Latency: ${Date.now() - interaction.createdTimestamp}ms`,
-        );
+        await interaction.reply({
+            content: `🏓 Pong! Latency: ${Date.now() - interaction.createdTimestamp}ms`,
+            flags: [Discord.MessageFlags.Ephemeral],
+        });
     }
     // Hug
     if (interaction.commandName === "hug") {
@@ -560,10 +504,9 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.commandName === "setpreference") {
         const sender = interaction.user;
         const sex = interaction.options.getString("sex");
-    
-        // Save the preference
+
         setUserPreference(sender.id, sex);
-    
+
         await interaction.reply({
             content: `✅ Your preference has been set to **${sex}**!`,
             ephemeral: true,
@@ -575,26 +518,23 @@ client.on("interactionCreate", async (interaction) => {
 client.once("ready", async () => {
     console.log(`✅ Logged in as ${client.user.tag}!`);
 
-    // Auto-refresh slash commands when bot starts
     const rest = new REST({ version: "10" }).setToken(token);
     try {
         console.log("🔄 Refreshing slash commands...");
-        await rest.put(Routes.applicationCommands(clientId), {
-            body: commands,
-        });
+        await rest.put(Routes.applicationCommands(clientId), { body: commands });
         console.log("✅ Successfully updated commands!");
     } catch (error) {
         console.error("❌ Error updating commands:", error);
     }
 });
-// Login bot
+
 client.login(token);
 
-const express = require("express");
-const app = express();
 app.get("/", (req, res) => {
     res.send("Bot is alive!");
 });
-app.listen(3000, () => {
-    console.log("✅ Bot is running 24/7");
+
+const port = process.env.PORT || 3000; // Use environment variable for port or default to 3000
+app.listen(port, () => {
+    console.log(`✅ Bot is running 24/7 on port ${port}`);
 });
