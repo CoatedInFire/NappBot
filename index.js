@@ -465,32 +465,23 @@ client.on("interactionCreate", async (interaction) => {
     // Settings  
     if (interaction.commandName === "settings") {
         const userId = interaction.user.id;
-        let profiles = {};
-        
-        try {
-            profiles = JSON.parse(fs.readFileSync('profiles.json', 'utf8'));
-        } catch (err) {
-            console.error("Could not load profiles.json, creating a new one.");
-        }
-
-        const userSettings = profiles.users && profiles.users[userId] ? profiles.users[userId] : null;
+        const userSettings = profiles.users?.[userId]; // Use optional chaining
 
         if (!userSettings) {
-            return interaction.reply({ content: "You have no settings saved yet. Use `/setpreference` to set one.", ephemeral: true });
+            return interaction.reply({ content: "You have no settings saved yet. Use `/setpreference` to set one.", flags: [MessageFlags.Ephemeral] }); // Ephemeral
         }
 
-        const embed = {
-            color: 0x7289DA, // Discord blue
-            title: "Your Settings",
-            fields: [
+        const embed = new EmbedBuilder() // Use EmbedBuilder
+            .setColor(0x7289DA)
+            .setTitle("Your Settings")
+            .addFields(
                 { name: "Preferred Sex", value: userSettings.sex || "Random", inline: true },
                 { name: "Total Commands Used", value: userSettings.usage.total_commands.toString(), inline: true },
-                { name: "Favorite Command", value: userSettings.usage.favorite_command || "None", inline: true },
-            ],
-            footer: { text: "Use /setpreference to change your preferred setting." }
-        };
+                { name: "Favorite Command", value: userSettings.usage.favorite_command || "None", inline: true }
+            )
+            .setFooter({ text: "Use /setpreference to change your preferred setting." });
 
-        interaction.reply({ embeds: [embed], ephemeral: true });
+        interaction.reply({ embeds: [embed], flags: [MessageFlags.Ephemeral] }); // Ephemeral
     }
     if (interaction.commandName === "setpreference") {
         const sender = interaction.user;
