@@ -73,6 +73,8 @@ if (dbUrl) {
   process.exit(1);
 }
 
+console.log(`🔍 Database Pool Status:`, pool ? "✅ Initialized" : "❌ Not Initialized");
+
 // 2. Create Table (if it doesn't exist) - Moved INSIDE client.once('ready')
 async function createTable() {
   try {
@@ -122,23 +124,29 @@ async function getOrCreateUser(userId) {
 
     if (rows.length === 0) {
       console.log(`⚠️ User ${userId} not found, adding to database.`);
+
       await addUserToDatabase(userId);
 
-      // Fetch again after inserting to ensure it's returned
+      // Wait a short moment to ensure the database processes it
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Fetch again after inserting
       const [newUser] = await pool.execute(
         "SELECT * FROM users WHERE user_id = ?",
         [userId]
       );
 
       if (newUser.length === 0) {
-        console.error(`❌ Failed to insert user ${userId} into database!`);
+        console.error(`❌ Insertion failed for user ${userId}.`);
         return null;
       }
 
-      return newUser[0]; // Return the newly created user
+      console.log(`✅ User ${userId} successfully created.`);
+      return newUser[0];
     }
 
-    return rows[0]; // Return existing user
+    console.log(`✅ User ${userId} exists.`);
+    return rows[0];
   } catch (error) {
     console.error(`❌ Error in getOrCreateUser for ${userId}:`, error);
     return null;
