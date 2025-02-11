@@ -1,3 +1,30 @@
+const fs = require("fs");
+const profilesFile = "profiles.json";
+
+// Load user preferences
+let profiles = {};
+if (fs.existsSync(profilesFile)) {
+    profiles = JSON.parse(fs.readFileSync(profilesFile, "utf8"));
+}
+
+// Function to save profiles
+function saveProfiles() {
+    fs.writeFileSync(profilesFile, JSON.stringify(profiles, null, 4));
+}
+
+// Function to get a user's preference (default is "female")
+function getUserPreference(userId) {
+    if (profiles[userId]?.sex) {
+        return profiles[userId].sex;
+    }
+    return Math.random() < 0.5 ? "male" : "female"; // Random default
+}
+// Function to set a user's preference
+function setUserPreference(userId, sex) {
+    profiles[userId] = { sex };
+    saveProfiles();
+}
+
 require("dotenv").config();
 const {
     Client,
@@ -165,7 +192,25 @@ const commands = [
     {
         name: "cmds",
         description: "📜 View a list of all available commands!",
-    }
+    },
+    
+    // Set Preference
+    {
+        name: "setpreference",
+        description: "Set your preferred sex for the /fuck command.",
+        options: [
+            {
+                name: "sex",
+                type: 3, // STRING
+                description: "Choose your preference",
+                required: true,
+                choices: [
+                    { name: "Female", value: "female" },
+                    { name: "Male", value: "male" },
+                ],
+            },
+        ],
+    },
     
 ];
 
@@ -240,7 +285,7 @@ client.on("interactionCreate", async (interaction) => {
         const sender = interaction.user;
         const recipient = interaction.options.getUser("user");
         let pose = interaction.options.getString("pose");
-        let type = interaction.options.getString("sex");
+        let type = interaction.options.getString("sex") || getUserPreference(recipient.id);
     
         if (recipient.id === sender.id) {
             return interaction.reply({
@@ -425,6 +470,18 @@ client.on("interactionCreate", async (interaction) => {
     
         await interaction.reply({ embeds: [embed] });
     }
+    if (interaction.commandName === "setpreference") {
+        const sender = interaction.user;
+        const sex = interaction.options.getString("sex");
+    
+        // Save the preference
+        setUserPreference(sender.id, sex);
+    
+        await interaction.reply({
+            content: `✅ Your preference has been set to **${sex}**!`,
+            ephemeral: true,
+        });
+    }    
 });
 
 client.once("ready", async () => {
