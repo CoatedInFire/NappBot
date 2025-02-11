@@ -3,11 +3,24 @@ const { URL } = require("node:url");
 const mysql = require("mysql2/promise");
 const express = require("express");
 const fetch = require("node-fetch");
+const {
+  Client,
+  GatewayIntentBits,
+  REST,
+  Routes,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  MessageFlags,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+} = require("discord.js");
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 // Ensure environment variable is set
 const dbUrl = process.env.MYSQL_PUBLIC_URL;
 if (!dbUrl) {
@@ -119,7 +132,6 @@ async function fetchE621Image(tags = []) {
     return null;
   }
 }
-
 // Slash commands
 const commands = [
   // Ping
