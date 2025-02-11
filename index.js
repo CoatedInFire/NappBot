@@ -131,7 +131,14 @@ const commands = [
                 required: true,
             },
         ],
+    },
+    
+    // Command list
+    {
+        name: "cmds",
+        description: "📜 View a list of all available commands!",
     }
+    
 ];
 
 
@@ -340,7 +347,7 @@ client.on("interactionCreate", async (interaction) => {
     
         await interaction.reply({ embeds: [embed] });
     }
-
+    // e621
     if (interaction.commandName === "e621") {
         await interaction.deferReply(); // Prevents timeout issues
     
@@ -359,6 +366,25 @@ client.on("interactionCreate", async (interaction) => {
             .setTimestamp();
         await interaction.editReply({ embeds: [embed] });
     }
+
+    // Commands
+    if (interaction.commandName === "cmds") {
+        const commands = await client.application.commands.fetch(); // Fetch all commands
+        if (!commands.size) {
+            return interaction.reply({ content: "❌ No commands found!", ephemeral: true });
+        }
+    
+        const commandList = commands.map(cmd => `\`/${cmd.name}\` - ${cmd.description}`).join("\n");
+    
+        const embed = new EmbedBuilder()
+            .setTitle("📜 Available Commands")
+            .setDescription(commandList)
+            .setColor("#FFA500")
+            .setTimestamp();
+    
+        await interaction.reply({ embeds: [embed] });
+    }
+    
 });
 
 client.once("ready", async () => {
