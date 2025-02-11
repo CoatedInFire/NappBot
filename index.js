@@ -2,9 +2,10 @@ require("dotenv").config(); // Load environment variables FIRST
 
 const { URL } = require("node:url"); // At the very top of your index.js (or db.js)
 
+// Ensure MYSQL_PUBLIC_URL is defined before creating the URL object
 const dbUrl = process.env.MYSQL_PUBLIC_URL
   ? new URL(process.env.MYSQL_PUBLIC_URL)
-  : null; // Check if the variable exists
+  : null;
 
 const {
   Client,
@@ -22,13 +23,21 @@ const fetch = require("node-fetch");
 const express = require("express");
 
 const app = express();
+
+// Create a Discord Client with necessary intents
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.Guilds, // Required for slash commands
+    GatewayIntentBits.GuildMessages, // Allows reading messages in a guild
+    GatewayIntentBits.MessageContent, // Required for reading message content (Ensure bot has permission)
+    GatewayIntentBits.GuildIntegrations, // Ensures interaction buttons and modals work properly
   ],
 });
+
+// Confirm that environment variables are loaded
+if (!process.env.MYSQL_PUBLIC_URL) {
+  console.warn("⚠️ Warning: MYSQL_PUBLIC_URL is not defined in .env");
+}
 
 // 1. MySQL Connection Pool (Conditional)
 let pool; // Declare pool outside the if statement
@@ -507,21 +516,24 @@ client.on("interactionCreate", async (interaction) => {
   const commandName = interaction.commandName;
 
   try {
-    // Update total commands for user
+    // Increment total commands
     await pool.execute(
       "UPDATE users SET total_commands = total_commands + 1 WHERE user_id = ?",
       [userId]
     );
 
-    // Fetch and update command usage stats
-    const [rows] = await pool.execute(
-      "SELECT command_counts FROM users WHERE user_id = ?",
+    // Fetch updated total commands
+    const [userRows] = await pool.execute(
+      "SELECT total_commands, command_counts FROM users WHERE user_id = ?",
       [userId]
     );
-    const commandCounts = rows[0]?.command_counts
-      ? JSON.parse(rows[0].command_counts)
+
+    const totalCommands = userRows[0]?.total_commands || 0;
+    const commandCounts = userRows[0]?.command_counts
+      ? JSON.parse(userRows[0].command_counts)
       : {};
 
+    // Update command-specific counts
     commandCounts[commandName] = (commandCounts[commandName] || 0) + 1;
     await pool.execute(
       "UPDATE users SET command_counts = ? WHERE user_id = ?",
@@ -529,28 +541,25 @@ client.on("interactionCreate", async (interaction) => {
     );
 
     // Determine favorite command
-    let favoriteCommand = null;
+    let favoriteCommand = "None";
     let maxCount = 0;
-
     for (const cmd in commandCounts) {
       if (commandCounts[cmd] > maxCount) {
         maxCount = commandCounts[cmd];
-        favoriteCommand = cmd; // Store the command with the highest count
+        favoriteCommand = cmd;
       }
     }
 
-    if (favoriteCommand) {
-      await pool.execute(
-        "UPDATE users SET favorite_command = ? WHERE user_id = ?",
-        [favoriteCommand, userId]
-      );
-    }
+    await pool.execute(
+      "UPDATE users SET favorite_command = ? WHERE user_id = ?",
+      [favoriteCommand, userId]
+    );
 
-    // Update Global and User Command Counts
+    // Update Global and User Command Stats
     await updateGlobalStats(commandName);
     await updateUserCommandCounts(userId, commandName);
   } catch (error) {
-    console.error("Error updating command usage or favorite command:", error);
+    console.error("Error updating command usage:", error);
   }
 
   // Ping
@@ -897,58 +906,57 @@ client.on("interactionCreate", async (interaction) => {
   // Settings
   if (interaction.commandName === "settings") {
     try {
-      const sex = await getUserPreference(userId);
-      const totalCommands = await getTotalCommands(userId);
-      const favoriteCommand = await getFavoriteCommand(userId);
+      const sex = (await getUserPreference(userId)) || "Random";
+      const globalCommands = await getTotalCommandsGlobal();
+      const mostUsedCommand = await getMostUsedCommand();
+      const mostUsedCommandCount = await getMostUsedCommandCount();
       const topUser = await getTopUser();
       const topUserTotalCommands = await getTotalCommands(
         topUser.replace(/\D/g, "")
       );
-      const globalCommands = await getTotalCommandsGlobal();
-      const mostUsedCommand = await getMostUsedCommand();
-      const mostUsedCommandCount = await getMostUsedCommandCount();
 
+      // **Enhanced Embed Formatting**
       const embed = new EmbedBuilder()
-        .setColor(0x7289da)
-        .setTitle("User Settings & Bot Statistics")
-        .setDescription("Your Stats")
+        .setColor(0x5865f2)
+        .setTitle("📊 User Settings & Bot Statistics")
+        .setDescription("Here are your current stats!")
         .addFields(
+          { name: "👤 **Your Stats**", value: "\u200b" },
           {
-            name: "Total Commands Used",
-            value: String(totalCommands),
+            name: "📌 Total Commands Used",
+            value: `**${totalCommands}**`,
             inline: true,
           },
-          { name: "Favorite Command", value: favoriteCommand, inline: true },
-          { name: "Sex Preference", value: sex || "Random", inline: true },
-          { name: "Global Stats", value: "\u200b", inline: true },
           {
-            name: "Total Commands Run",
-            value: String(globalCommands),
+            name: "⭐ Favorite Command",
+            value: `**/${favoriteCommand}**`,
+            inline: true,
+          },
+          { name: "💬 Sex Preference", value: `**${sex}**`, inline: true },
+          { name: "\u200b", value: "\u200b", inline: false },
+          { name: "🌍 **Global Stats**", value: "\u200b" },
+          {
+            name: "📊 Total Commands Run",
+            value: `**${globalCommands}**`,
             inline: true,
           },
           { name: "\u200b", value: "\u200b", inline: true },
-          { name: "Top User", value: `@${topUser}`, inline: true },
           {
-            name: "Commands Used",
-            value: `${topUserTotalCommands} commands`,
+            name: "🏆 **Top Users**",
+            value: `👑 @${topUser} - **${topUserTotalCommands}** commands`,
             inline: true,
           },
-          { name: "\u200b", value: "\u200b", inline: true },
+          { name: "\u200b", value: "\u200b", inline: false },
           {
-            name: "Most Used Command",
-            value: `/${mostUsedCommand}`,
-            inline: true,
-          },
-          {
-            name: "Usage Count",
-            value: `${mostUsedCommandCount} uses`,
+            name: "🔥 **Most Used Command**",
+            value: `🔹 /${mostUsedCommand} - **${mostUsedCommandCount}** uses`,
             inline: true,
           }
         )
         .setFooter({
           text: `Requested by ${
             interaction.user.tag
-          } at ${new Date().toLocaleTimeString([], {
+          } • Today at ${new Date().toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
           })}`,
@@ -958,20 +966,19 @@ client.on("interactionCreate", async (interaction) => {
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
           .setCustomId("edit_preferences")
-          .setLabel("Change Preferences")
+          .setLabel("⚙️ Change Preferences")
           .setStyle(ButtonStyle.Primary)
       );
 
-      await interaction.reply({ embeds: [embed], components: [row] });
+      interaction.reply({ embeds: [embed], components: [row] });
     } catch (error) {
       console.error("Error fetching settings:", error);
-      await interaction.reply({
-        content: "An error occurred while fetching your settings.",
+      interaction.reply({
+        content: "❌ An error occurred while fetching your settings.",
         ephemeral: true,
       });
     }
   }
-
   // Set Preference Command
   if (interaction.commandName === "setpreference") {
     const sender = interaction.user;
@@ -988,50 +995,52 @@ client.on("interactionCreate", async (interaction) => {
 
 // Handle button interactions
 client.on("interactionCreate", async (interaction) => {
-  // Button/Modal Handler
-  if (interaction.isButton()) {
-    if (interaction.customId === "edit_preferences") {
-      const userId = interaction.user.id;
+  try {
+    // Button Interaction Handling
+    if (interaction.isButton()) {
+      if (interaction.customId === "edit_preferences") {
+        const modal = new ModalBuilder()
+          .setCustomId("preference_modal")
+          .setTitle("Edit Preferences");
 
-      const modal = new ModalBuilder()
-        .setCustomId("preference_modal")
-        .setTitle("Edit Preferences");
+        const sexInput = new TextInputBuilder()
+          .setCustomId("sex_input")
+          .setLabel("Preferred Sex (male, female, other)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false);
 
-      const sexInput = new TextInputBuilder()
-        .setCustomId("sex_input")
-        .setLabel("Preferred Sex (male, female, other)")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(false);
+        const firstActionRow = new ActionRowBuilder().addComponents(sexInput);
+        modal.addComponents(firstActionRow);
 
-      const firstActionRow = new ActionRowBuilder().addComponents(sexInput);
-      modal.addComponents(firstActionRow);
-
-      await interaction.showModal(modal);
-    }
-  }
-
-  if (interaction.isModalSubmit()) {
-    if (interaction.customId === "preference_modal") {
-      const userId = interaction.user.id;
-      const sex = interaction.fields.getTextInputValue("sex_input") || "random";
-
-      try {
-        await setUserPreference(userId, sex);
-        await interaction.reply({
-          content: `Preferences updated! Sex: ${sex}`,
-          flags: [MessageFlags.Ephemeral],
-        });
-      } catch (error) {
-        console.error("Error updating preferences:", error);
-        await interaction.reply({
-          content: "An error occurred.",
-          flags: [MessageFlags.Ephemeral],
-        });
+        await interaction.showModal(modal);
       }
     }
+
+    // Modal Submission Handling
+    if (interaction.isModalSubmit()) {
+      if (interaction.customId === "preference_modal") {
+        const userId = interaction.user.id;
+        const sex = interaction.fields.getTextInputValue("sex_input") || "random";
+
+        try {
+          await setUserPreference(userId, sex);
+          await interaction.reply({
+            content: `✅ Preferences updated! Sex: ${sex}`,
+            ephemeral: true, // FIXED: Corrected flag usage
+          });
+        } catch (error) {
+          console.error("❌ Error updating preferences:", error);
+          await interaction.reply({
+            content: "⚠️ An error occurred while updating preferences.",
+            ephemeral: true, // FIXED: Corrected flag usage
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("❌ Unexpected error handling interaction:", error);
   }
 });
-
 client.login(token);
 
 app.get("/", (req, res) => {
