@@ -56,23 +56,21 @@ const commands = [
             {
                 name: "pose",
                 type: 3, // STRING type
-                description: "Choose a pose",
+                description: "Choose which position the recipient gets penetrated in",
                 required: false,
                 choices: [
-                    { name: "Doggystyle", value: "doggy" },
-                    { name: "Cowgirl", value: "cowgirl" },
-                    { name: "placeholder3", value: "placeholder3" },
-                    { name: "placeholder4", value: "placeholder4" },
+                    { name: "Behind", value: "behind" },
+                    { name: "Front", value: "front" },
                 ],
             },
             {
-                name: "type",
+                name: "sex",
                 type: 3, // STRING type
-                description: "Choose between vaginal or anal",
+                description: "Choose if the recipient is male or female",
                 required: false,
                 choices: [
-                    { name: "Vaginal", value: "vaginal" },
-                    { name: "Anal", value: "anal" },
+                    { name: "Female", value: "Female" },
+                    { name: "Male", value: "Male" },
                 ],
             },
         ],
@@ -154,7 +152,7 @@ client.on("interactionCreate", async (interaction) => {
                 `${sender} wraps ${recipient} in a big warm hug! 🤗`,
                 `Aww, ${sender} gives ${recipient} a loving hug! 💖`,
                 `${sender} tightly hugs ${recipient}! So wholesome! 🥰`,
-                `Hug alert! 🚨 ${sender} just sent ${recipient} a super soft hug! 🫂`,
+                `Hug alert! 🚨 ${sender} just sent ${recipient} a hug! 🫂`,
                 `Nothing beats a good hug! ${sender} embraces ${recipient}! 💞`,
             ];
             embedDescription =
@@ -185,23 +183,19 @@ client.on("interactionCreate", async (interaction) => {
             });
         }
     
-        const poseOptions = ["doggy", "placeholder2", "placeholder3", "placeholder4"];
+        const poseOptions = ["behind", "front"];
         if (!pose) {
             pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
         }
     
         const images = {
-            vaginal: {
-                doggy: ["https://static1.e621.net/data/e1/a1/e1a1be581602c5171be271c9a970c78d.gif", "https://static1.e621.net/data/1f/e1/1fe11f06141f5bcdc002a90ff4c3d80f.gif", "https://static1.e621.net/data/d7/b4/d7b42c559f7505d66bc69c4714a354e5.gif"],
-                cowgirl: ["https://static1.e621.net/data/c5/30/c5305191eb41530fd8d3527a969527b3.gif", "vaginal2_2", "vaginal2_3"],
-                placeholder3: ["https://static1.e621.net/data/2f/26/2f26fa4a23068a99e9ec9c2d1ed9a8e0.gif", "vaginal3_2", "vaginal3_3"],
-                placeholder4: ["vaginal4_1", "vaginal4_2", "vaginal4_3"],
+            female: {
+                behind: ["https://static1.e621.net/data/e1/a1/e1a1be581602c5171be271c9a970c78d.gif", "https://static1.e621.net/data/1f/e1/1fe11f06141f5bcdc002a90ff4c3d80f.gif", "https://static1.e621.net/data/d7/b4/d7b42c559f7505d66bc69c4714a354e5.gif", "https://static1.e621.net/data/ba/05/ba0553f7459b3a4023860047ca8b24c2.gif", "https://static1.e621.net/data/ba/05/ba0553f7459b3a4023860047ca8b24c2.gif", "https://static1.e621.net/data/f6/41/f6411b4e47be198de2b07c0ab517b4f7.gif"],
+                front: ["https://static1.e621.net/data/c5/30/c5305191eb41530fd8d3527a969527b3.gif", "https://static1.e621.net/data/2f/26/2f26fa4a23068a99e9ec9c2d1ed9a8e0.gif", "https://static1.e621.net/data/61/48/61482f946c4558d0f019772834164377.gif", "https://static1.e621.net/data/f7/b9/f7b9f8a757b40d88c18bdc0c3fc4af6f.gif", "https://static1.e621.net/data/2c/30/2c304532a4678c0310ae249b8dffa919.gif", "https://static1.e621.net/data/0a/bd/0abd48dda3e8a492b5c8418cd4c036cf.gif", "https://static1.e621.net/data/9b/c8/9bc80f868254e23f56acdfc9422d0f68.gif", "https://static1.e621.net/data/f5/58/f558f5e8928b5b0745a168145bbadef5.gif", "https://static1.e621.net/data/bf/f7/bff7f1f5f9cc8fdfef851c7297e317ff.gif", "https://static1.e621.net/data/b4/3e/b43e0cce74d6762ed2cb7509c4a0e43c.gif"],
             },
-            anal: {
-                doggy: ["anal1_1", "anal1_2", "anal1_3"],
-                placeholder2: ["anal2_1", "anal2_2", "anal2_3"],
-                placeholder3: ["anal3_1", "anal3_2", "anal3_3"],
-                placeholder4: ["anal4_1", "anal4_2", "anal4_3"],
+            male: {
+                behind: ["https://static1.e621.net/data/8d/6c/8d6c97b9b1f6ad1ce11a33e95aa3320f.gif", "https://static1.e621.net/data/27/15/27159b7051e706017e50520e5d8259be.gif", "https://static1.e621.net/data/58/2c/582c18a2337dc10f400d2f1806648e03.gif", "https://static1.e621.net/data/79/b7/79b7491d38ccc9b549d61a7484bb3229.gif", "https://static1.e621.net/data/6c/e8/6ce819f62b6d7d115c3b881129198eeb.gif", "https://static1.e621.net/data/d4/01/d401d2fa019876715db77f7606cdaeac.gif", "https://static1.e621.net/data/f4/92/f4929ae1d9100e7bcaa55d653fc1fbae.gif", "https://static1.e621.net/data/82/87/8287c98315dbfe1d497bd5b598e2bfc8.gif", "https://static1.e621.net/data/71/9f/719fb226f899f9dfe18fcb46d86f5c46.gif", "https://static1.e621.net/data/1f/75/1f755c945e0f6eafedd12209859f4c89.gif", "https://static1.e621.net/data/84/d3/84d364f4a107716b73ea95f0156c5860.gif"],
+                front: ["https://static1.e621.net/data/00/ee/00eee273dc572ab71b23aa78dbbf5663.gif", "https://static1.e621.net/data/cb/a7/cba75d5c73b30b25a05aa48e0d883786.gif", "https://static1.e621.net/data/78/e8/78e888f5ab8155658d09b9d9818897f9.gif", "https://static1.e621.net/data/1b/91/1b9107b9d991e97b18a54e7acc34a770.gif", "https://static1.e621.net/data/69/08/690804c63fff076a218060a6ea586f76.gif", "https://static1.e621.net/data/03/62/03628379efa53089ffb58c45050be32c.gif", "https://static1.e621.net/data/89/c0/89c06489dfdb2b1442e0c780d1c701fe.gif"],
             },
         };
     
@@ -255,7 +249,7 @@ client.on("interactionCreate", async (interaction) => {
 
         const embed = new EmbedBuilder()
             .setTitle("👅 Get licked!")
-            .setDescription(`${sender} licks ${recipient}! 😜`)
+            .setDescription(`${sender} licks ${recipient}!`)
             .setImage(image)
             .setColor("#FF007F")
             .setTimestamp();
