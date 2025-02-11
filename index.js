@@ -1,6 +1,6 @@
-require("dotenv").config(); // Load environment variables FIRST
+require("dotenv").config();
 
-const { URL } = require("node:url"); // At the very top of your index.js (or db.js)
+const { URL } = require("node:url");
 
 // Ensure MYSQL_PUBLIC_URL is defined before creating the URL object
 const dbUrl = process.env.MYSQL_PUBLIC_URL
@@ -27,10 +27,10 @@ const app = express();
 // Create a Discord Client with necessary intents
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds, // Required for slash commands
-    GatewayIntentBits.GuildMessages, // Allows reading messages in a guild
-    GatewayIntentBits.MessageContent, // Required for reading message content (Ensure bot has permission)
-    GatewayIntentBits.GuildIntegrations, // Ensures interaction buttons and modals work properly
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildIntegrations,
   ],
 });
 
@@ -40,16 +40,15 @@ if (!process.env.MYSQL_PUBLIC_URL) {
 }
 
 // 1. MySQL Connection Pool (Conditional)
-let pool; // Declare pool outside the if statement
+let pool;
 
 if (dbUrl) {
-  // Only attempt to create the pool if the URL exists
   pool = mysql.createPool({
     host: dbUrl.hostname,
     port: parseInt(dbUrl.port, 10),
     user: dbUrl.username,
     password: dbUrl.password,
-    database: dbUrl.pathname.substring(1), // Remove leading slash
+    database: dbUrl.pathname.substring(1),
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
@@ -68,15 +67,14 @@ if (dbUrl) {
   testConnection();
 } else {
   console.error("MYSQL_PUBLIC_URL environment variable is not set!");
-  process.exit(1); // Exit if the URL isn't found
+  process.exit(1);
 }
 
 // 2. Create Table (if it doesn't exist) - Moved INSIDE client.once('ready')
 async function createTable() {
   try {
     const connection = await pool.getConnection();
-    console.log("Attempting to create tables..."); // Log before executing queries
-    // Create users table (existing code)
+    console.log("Attempting to create tables...");
     await connection.execute(`
           CREATE TABLE IF NOT EXISTS users (
               user_id VARCHAR(255) PRIMARY KEY,
@@ -88,7 +86,6 @@ async function createTable() {
       `);
     console.log("Users table created (or already exists).");
 
-    // Create global_stats table
     await connection.execute(`
           CREATE TABLE IF NOT EXISTS global_stats (
               stat_name VARCHAR(255) PRIMARY KEY,
@@ -97,7 +94,6 @@ async function createTable() {
       `);
     console.log("global_stats table created (or already exists).");
 
-    // Create command_usage table
     await connection.execute(`
           CREATE TABLE IF NOT EXISTS command_usage (
               command_name VARCHAR(255),
@@ -105,17 +101,17 @@ async function createTable() {
               PRIMARY KEY (command_name)
           )
       `);
-    connection.release(); // Release the connection back to the pool
+    connection.release();
     console.log("Tables created successfully (or already existed).");
   } catch (error) {
-    console.error("Error in createTable function:", error); // Log the full error
+    console.error("Error in createTable function:", error);
     if (error.sqlMessage) {
-      console.error("SQL Error:", error.sqlMessage); // Log SQL-specific error
+      console.error("SQL Error:", error.sqlMessage);
     }
   }
 }
 
-// 3. Replace file-based functions with MySQL functions
+
 async function getUserPreference(userId) {
   try {
     const [rows] = await pool.execute(
@@ -172,24 +168,33 @@ client.once("ready", async () => {
   console.log(`✅ Logged in as ${client.user.tag}!`);
 
   if (!pool) {
-    // Check if the pool exists (connection established)
     console.error("❌ Database connection pool is not initialized!");
-    return; // Or throw an error to stop the bot startup
+    return;
   }
 
   try {
     await createTable();
-  } catch (error) {
-    console.error("Error creating table:", error);
-  }
 
-  const rest = new REST({ version: "10" }).setToken(token);
-  try {
+    await pool.execute(
+      "INSERT IGNORE INTO global_stats (stat_name, stat_value) VALUES ('total_commands', '0')"
+    );
+
+    const defaultCommands = ["ping", "hug", "fuck", "lick", "kiss", "e621", "cmds", "settings", "setpreference"];
+    for (const cmd of defaultCommands) {
+      await pool.execute(
+        "INSERT IGNORE INTO command_usage (command_name, count) VALUES (?, 0)",
+        [cmd]
+      );
+    }
+
+    console.log("📊 Global stats initialized.");
+
+    const rest = new REST({ version: "10" }).setToken(token);
     console.log("🔄 Refreshing slash commands...");
     await rest.put(Routes.applicationCommands(clientId), { body: commands });
     console.log("✅ Successfully updated commands!");
   } catch (error) {
-    console.error("❌ Error updating commands:", error);
+    console.error("❌ Error during initialization:", error);
   }
 });
 
@@ -240,7 +245,7 @@ const userCommandCounts = {};
 async function updateGlobalStats(commandName) {
   try {
     await pool.execute(
-      "UPDATE global_stats SET stat_value = stat_value + 1 WHERE stat_name = 'total_commands'",
+      "UPDATE global_stats SET stat_value = COALESCE(stat_value, 0) + 1 WHERE stat_name = 'total_commands'",
       []
     );
     if (!(await getGlobalStat("total_commands"))) {
@@ -342,40 +347,6 @@ async function getGlobalStat(stat_name) {
     return 0;
   }
 }
-
-client.once("ready", async () => {
-  // ... (Your existing ready event handler code)
-
-  try {
-    await createTable();
-
-    // Initialize global stats (if they don't exist)
-    await pool.execute(
-      "INSERT IGNORE INTO global_stats (stat_name, stat_value) VALUES ('total_commands', '0')",
-      []
-    );
-    // ... initialize other global stats as needed
-    const defaultCommands = [
-      "ping",
-      "hug",
-      "fuck",
-      "lick",
-      "kiss",
-      "e621",
-      "cmds",
-      "settings",
-      "setpreference",
-    ];
-    for (const cmd of defaultCommands) {
-      await pool.execute(
-        "INSERT IGNORE INTO command_usage (command_name, count) VALUES (?, 0)",
-        [cmd]
-      );
-    }
-  } catch (error) {
-    console.error("Error initializing global stats:", error);
-  }
-});
 
 // Slash commands
 const commands = [
