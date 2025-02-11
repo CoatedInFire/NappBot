@@ -227,26 +227,43 @@ async function getFavoriteCommand(userId) {
 
 async function updateUserSettings(userId, newSex) {
   try {
-    console.log(`🔄 Ensuring user ${userId} exists before updating...`);
-    
-    // Ensure the user exists before updating
-    const user = await getOrCreateUser(userId);
-    if (!user) {
-      console.warn(`⚠️ User ${userId} could not be found or created.`);
-      return false;
+    console.log(`🔍 Checking if user ${userId} exists in the database...`);
+
+    // Check if user exists
+    const [existingUser] = await pool.execute(
+      "SELECT * FROM users WHERE user_id = ?",
+      [userId]
+    );
+
+    if (existingUser.length === 0) {
+      console.warn(`❌ User ${userId} not found in database. Inserting now...`);
+
+      // Create user if not found
+      const [insertResult] = await pool.execute(
+        "INSERT INTO users (user_id, sex, total_commands) VALUES (?, ?, 1)",
+        [userId, newSex]
+      );
+
+      if (insertResult.affectedRows === 0) {
+        console.error(`❌ Failed to insert new user ${userId}.`);
+        return false;
+      }
+
+      console.log(`✅ User ${userId} successfully inserted.`);
+    } else {
+      console.log(`✅ User ${userId} already exists.`);
     }
 
-    console.log(`🔄 Updating user ${userId} in database...`);
+    console.log(`🔄 Updating settings for user ${userId}...`);
 
+    // Update user settings
     const [updateResult] = await pool.execute(
       "UPDATE users SET sex = ?, total_commands = total_commands + 1 WHERE user_id = ?",
       [newSex, userId]
     );
 
-    console.log(`📝 Update Result:`, updateResult);
-
     if (updateResult.affectedRows === 0) {
-      console.warn(`⚠️ No rows updated. User ${userId} might not exist.`);
+      console.warn(`⚠️ Update failed. No rows affected.`);
       return false;
     }
 
