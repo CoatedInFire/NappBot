@@ -194,6 +194,63 @@ async function fetchE621Image(tags = []) {
   }
 }
 
+// Global Variables to Store Stats (Initialize as needed)
+let totalCommandsGlobal = 0; // Initialize when your bot starts.
+const commandCountsGlobal = {}; // Initialize as an empty object.
+const userCommandCounts = {}; // Initialize as an empty object.
+
+async function updateGlobalStats(commandName) {
+    totalCommandsGlobal++;
+    commandCountsGlobal[commandName] = (commandCountsGlobal[commandName] || 0) + 1;
+}
+
+async function updateUserCommandCounts(userId, commandName) {
+    userCommandCounts[userId] = userCommandCounts[userId] || {};
+    userCommandCounts[userId][commandName] = (userCommandCounts[userId][commandName] || 0) + 1;
+}
+
+// Functions for Global Stats, Top Users, and Most Used Commands
+function getTotalCommandsGlobal() {
+    return totalCommandsGlobal;
+}
+
+function getTopUser() {
+    let topUser = null;
+    let maxCommands = 0;
+
+    for (const userId in userCommandCounts) {
+        let userTotal = 0;
+        for (const command in userCommandCounts[userId]) {
+            userTotal += userCommandCounts[userId][command];
+        }
+        if (userTotal > maxCommands) {
+            maxCommands = userTotal;
+            topUser = userId;
+        }
+    }
+
+    return topUser ? `<@${topUser}>` : "No users yet"; // Return mention or message
+}
+
+function getMostUsedCommand() {
+    let mostUsedCommand = null;
+    let maxCount = 0;
+
+    for (const command in commandCountsGlobal) {
+        if (commandCountsGlobal[command] > maxCount) {
+            maxCount = commandCountsGlobal[command];
+            mostUsedCommand = command;
+        }
+    }
+
+    return mostUsedCommand || "No commands used yet";
+}
+
+function getMostUsedCommandCount() {
+    const mostUsedCommand = getMostUsedCommand();
+    return commandCountsGlobal[mostUsedCommand] || 0;
+}
+
 // Slash commands
 const commands = [
   // Ping
@@ -326,61 +383,64 @@ const commands = [
   },
 ];
 
-client.on("interactionCreate", async (interaction) => {
+// client.on('interactionCreate', ...)
+client.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
 
   const userId = interaction.user.id;
-  const commandName = interaction.commandName; // Get the name of the command used
+  const commandName = interaction.commandName;
 
   try {
-    // 1. Increment total_commands
-    await pool.execute(
-      "UPDATE users SET total_commands = total_commands + 1 WHERE user_id = ?",
-      [userId]
-    );
-
-    // 2. Update command_counts
-    const [rows] = await pool.execute(
-      "SELECT command_counts FROM users WHERE user_id = ?",
-      [userId]
-    );
-    const commandCounts = rows[0]?.command_counts
-      ? JSON.parse(rows[0].command_counts)
-      : {};
-    commandCounts[commandName] = (commandCounts[commandName] || 0) + 1;
-    await pool.execute(
-      "UPDATE users SET command_counts = ? WHERE user_id = ?",
-      [JSON.stringify(commandCounts), userId]
-    );
-
-    // 3. Determine and update favorite_command
-    let favoriteCommand = null;
-    let maxCount = 0;
-
-    for (const cmd in commandCounts) {
-      if (commandCounts[cmd] > maxCount) {
-        maxCount = commandCounts[cmd];
-        favoriteCommand = cmd;
-      }
-    }
-
-    if (favoriteCommand) {
-      // Only update if a favorite command is found
       await pool.execute(
-        "UPDATE users SET favorite_command = ? WHERE user_id = ?",
-        [favoriteCommand, userId]
+          "UPDATE users SET total_commands = total_commands + 1 WHERE user_id = ?",
+          [userId]
       );
-    }
+
+      const [rows] = await pool.execute(
+          "SELECT command_counts FROM users WHERE user_id = ?",
+          [userId]
+      );
+      const commandCounts = rows[0]?.command_counts
+          ? JSON.parse(rows[0].command_counts)
+          : {};
+      commandCounts[commandName] = (commandCounts[commandName] || 0) + 1;
+      await pool.execute(
+          "UPDATE users SET command_counts = ? WHERE user_id = ?",
+          [JSON.stringify(commandCounts), userId]
+      );
+
+      let favoriteCommand = null;
+      let maxCount = 0;
+
+      for (const cmd in commandCounts) {
+          if (commandCounts[cmd] > maxCount) {
+              maxCount = commandCounts[cmd];
+              favoriteCommand = cmd;
+          }
+      }
+
+      if (favoriteCommand) {
+          await pool.execute(
+              "UPDATE users SET favorite_command = ? WHERE user_id = ?",
+              [favoriteCommand, userId]
+          );
+      }
+
+      // Update Global and User Command Counts (NEW!)
+      await updateGlobalStats(commandName);
+      await updateUserCommandCounts(userId, commandName);
+
   } catch (error) {
-    console.error("Error updating command usage or favorite command:", error);
+      console.error("Error updating command usage or favorite command:", error);
   }
+
   // Ping
   if (interaction.commandName === "ping") {
     await interaction.reply({
       content: `🏓 Pong! Latency: ${
         Date.now() - interaction.createdTimestamp
       }ms`,
-      flags: [Discord.MessageFlags.Ephemeral],
+      flags: [MessageFlags.Ephemeral],
     });
   }
   // Hug
@@ -741,7 +801,7 @@ client.on("interactionCreate", async (interaction) => {
           return interaction.reply({
             embeds: [embed],
             components: [row],
-            flags: [MessageFlags.Ephemeral],
+            // Removed flags: [MessageFlags.Ephemeral], // Make it non-ephemeral
           });
         }
 
@@ -749,35 +809,72 @@ client.on("interactionCreate", async (interaction) => {
           getFavoriteCommand(userId).then((favoriteCommand) => {
             const embed = new EmbedBuilder()
               .setColor(0x7289da)
-              .setTitle("Your Settings")
+              .setTitle("User Settings & Bot Statistics") // Updated title
+              .setDescription("Your Stats") // Added description for "Your Stats" section
               .addFields(
-                { name: "Preferred Sex", value: sex || "Random", inline: true },
                 {
                   name: "Total Commands Used",
-                  value: String(totalCommands), // Corrected: Convert to string
+                  value: String(totalCommands),
                   inline: true,
                 },
                 {
                   name: "Favorite Command",
                   value: favoriteCommand,
                   inline: true,
-                }
+                },
+                { name: "Sex Preference", value: sex || "Random", inline: true } // Moved Sex Preference to its own field
+              )
+              .addFields(
+                // Added Global Stats section
+                { name: "Global Stats", value: "\u200b", inline: true }, // Empty field for spacing
+                {
+                  name: "Total Commands Run",
+                  value: String(getTotalCommandsGlobal()),
+                  inline: true,
+                }, // Replace with your global count function
+                { name: "\u200b", value: "\u200b", inline: true } // Empty field for spacing
+              )
+              .addFields(
+                // Added Top Users section
+                { name: "Top Users", value: "\u200b", inline: true }, // Empty field for spacing
+                {
+                  name: `@${getTopUser()}`,
+                  value: `${getTotalCommands(getTopUser())} commands`,
+                  inline: true,
+                }, // Replace with your top user function
+                { name: "\u200b", value: "\u200b", inline: true } // Empty field for spacing
+              )
+              .addFields(
+                // Added Most Used Commands section
+                { name: "Most Used Commands", value: "\u200b", inline: true }, // Empty field for spacing
+                {
+                  name: `/${getMostUsedCommand()}`,
+                  value: `${getMostUsedCommandCount()} uses`,
+                  inline: true,
+                }, // Replace with your most used command function
+                { name: "\u200b", value: "\u200b", inline: true } // Empty field for spacing
               )
               .setFooter({
-                text: "Click the button below to change your preferred setting.",
-              }); // Updated footer
+                text: `Requested by ${
+                  interaction.user.tag
+                } Today at ${new Date().toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}`, // Updated footer
+                iconURL: interaction.user.displayAvatarURL(),
+              });
 
             const row = new ActionRowBuilder().addComponents(
               new ButtonBuilder()
                 .setCustomId("edit_preferences")
-                .setLabel("Edit Preferences")
+                .setLabel("Change Preferences") // Updated button label
                 .setStyle(ButtonStyle.Primary)
             );
 
             interaction.reply({
               embeds: [embed],
               components: [row],
-              flags: [MessageFlags.Ephemeral],
+              // Removed flags: [MessageFlags.Ephemeral], // Make it non-ephemeral
             });
           });
         });
@@ -786,7 +883,7 @@ client.on("interactionCreate", async (interaction) => {
         console.error("Error fetching settings:", error);
         interaction.reply({
           content: "An error occurred while fetching your settings.",
-          flags: [MessageFlags.Ephemeral],
+          // Removed flags: [MessageFlags.Ephemeral], // Make it non-ephemeral
         });
       });
   }
