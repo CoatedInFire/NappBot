@@ -21,53 +21,67 @@ const {
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-// Ensure environment variable is set
+
+// Ensure environment variables are set
 const dbUrl = process.env.MYSQL_PUBLIC_URL;
+const token = process.env.TOKEN;
+const clientId = process.env.CLIENT_ID;
+
 if (!dbUrl) {
   console.error("❌ MYSQL_PUBLIC_URL is not set in environment variables!");
   process.exit(1);
 }
 
+if (!token) {
+  console.error("❌ TOKEN is not set in environment variables!");
+  process.exit(1);
+}
+
+if (!clientId) {
+  console.error("❌ CLIENT_ID is not set in environment variables!");
+  process.exit(1);
+}
+
 // Parse MySQL URL safely
+let databasePool;
+
 try {
   const dbUri = new URL(dbUrl);
 
   const host = dbUri.hostname;
   const port = dbUri.port || 3306; // Default MySQL port
-  const database = dbUri.pathname.replace("/", ""); // Remove leading slash
+  const databaseName = dbUri.pathname.replace("/", ""); // Remove leading slash
   const user = dbUri.username || "root";
   const password = dbUri.password || "";
 
   // Create MySQL connection pool
-  const databasePool = mysql.createPool({
+  databasePool = mysql.createPool({
     host,
     port,
     user,
     password,
-    database,
+    database: databaseName,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
   });
 
   console.log("✅ Connected to MySQL database!");
-
-  module.exports = databasePool;
 } catch (error) {
   console.error("❌ Failed to parse MySQL URL:", error);
   process.exit(1);
 }
 
-const token = process.env.TOKEN;
-if (!token) {
-  console.error("❌ TOKEN is not set in environment variables!");
-  process.exit(1);
-}
-const clientId = process.env.CLIENT_ID;
-if (!clientId) {
-  console.error("❌ CLIENT_ID is not set in environment variables!");
-  process.exit(1);
-}
+// Test MySQL connection
+databasePool.query("SELECT 1")
+  .then(() => console.log("✅ MySQL connection test successful!"))
+  .catch(err => {
+    console.error("❌ MySQL connection test failed:", err);
+    process.exit(1);
+  });
+
+// Export database connection for other files
+module.exports = { database: databasePool };
 
 // MySQL Functions
 async function getUserPreference(userId) {
