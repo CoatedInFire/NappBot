@@ -151,6 +151,19 @@ async function addUserToDatabase(userId) {
   }
 }
 
+async function getUserPreference(userId) {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT sex FROM users WHERE user_id = ?",
+      [userId]
+    );
+    return rows[0]?.sex || "Random"; // Default to "Random" if not set
+  } catch (error) {
+    console.error("❌ Error getting user preference:", error);
+    return "Random";
+  }
+}
+
 async function setUserPreference(userId, sex) {
   try {
     await getOrCreateUser(userId);
@@ -393,6 +406,7 @@ async function getGlobalStat(stat_name) {
     return 0;
   }
 }
+
 
 // Slash commands
 const commands = [
@@ -686,7 +700,7 @@ client.on("interactionCreate", async (interaction) => {
       let type = interaction.options.getString("sex");
 
       if (!type) {
-        const preference = getUserPreference(recipient.id);
+        const preference = await getUserPreference(recipient.id);
         type = typeof preference === "string" ? preference : "male"; // Default to male
       }
 
