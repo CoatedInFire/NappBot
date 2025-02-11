@@ -118,35 +118,35 @@ async function createTable() {
 
 async function getOrCreateUser(userId) {
   try {
+    console.log(`🔍 Checking if user ${userId} exists in database...`);
     const [rows] = await pool.execute("SELECT * FROM users WHERE user_id = ?", [
       userId,
     ]);
 
     if (rows.length === 0) {
-      console.log(`⚠️ User ${userId} not found, adding to database.`);
-
-      await addUserToDatabase(userId);
-
-      // Wait a short moment to ensure the database processes it
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Fetch again after inserting
-      const [newUser] = await pool.execute(
-        "SELECT * FROM users WHERE user_id = ?",
-        [userId]
+      console.log(`⚠️ User ${userId} not found, inserting into database...`);
+      
+      const [insertResult] = await pool.execute(
+        "INSERT INTO users (user_id, sex, total_commands, favorite_command) VALUES (?, ?, ?, ?)",
+        [userId, "Random", 0, "None"]
       );
+
+      console.log(`✅ Insert Result:`, insertResult);
+
+      // Fetch again to confirm
+      const [newUser] = await pool.execute("SELECT * FROM users WHERE user_id = ?", [userId]);
 
       if (newUser.length === 0) {
         console.error(`❌ Insertion failed for user ${userId}.`);
         return null;
       }
 
-      console.log(`✅ User ${userId} successfully created.`);
-      return newUser[0];
+      console.log(`✅ User ${userId} successfully added.`);
+      return newUser[0]; 
     }
 
-    console.log(`✅ User ${userId} exists.`);
-    return rows[0];
+    console.log(`✅ User ${userId} already exists.`);
+    return rows[0]; 
   } catch (error) {
     console.error(`❌ Error in getOrCreateUser for ${userId}:`, error);
     return null;
