@@ -59,10 +59,10 @@ const commands = [
                 description: "Choose a pose",
                 required: false,
                 choices: [
-                    { name: "placeholder", value: "placeholder" },
-                    { name: "placeholder", value: "placeholder" },
-                    { name: "placeholder", value: "placeholder" },
-                    { name: "placeholder", value: "placeholder" },
+                    { name: "placeholder1", value: "placeholder1" },
+                    { name: "placeholder2", value: "placeholder2" },
+                    { name: "placeholder3", value: "placeholder3" },
+                    { name: "placeholder4", value: "placeholder4" },
                 ],
             },
             {
@@ -177,50 +177,56 @@ client.on("interactionCreate", async (interaction) => {
         const recipient = interaction.options.getUser("user");
         let pose = interaction.options.getString("pose");
         let type = interaction.options.getString("type");
-
+    
         if (recipient.id === sender.id) {
             return interaction.reply({
                 content: "❌ You can't do this to yourself...",
                 ephemeral: true,
             });
         }
-
-        const poseOptions = ["placeholder", "placeholder", "placeholder", "placeholder"];
+    
+        const poseOptions = ["placeholder1", "placeholder2", "placeholder3", "placeholder4"];
         if (!pose) {
             pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
         }
-
+    
+        const images = {
+            vaginal: {
+                placeholder1: ["vaginal1_1", "vaginal1_2", "vaginal1_3"],
+                placeholder2: ["vaginal2_1", "vaginal2_2", "vaginal2_3"],
+                placeholder3: ["vaginal3_1", "vaginal3_2", "vaginal3_3"],
+                placeholder4: ["vaginal4_1", "vaginal4_2", "vaginal4_3"],
+            },
+            anal: {
+                placeholder1: ["anal1_1", "anal1_2", "anal1_3"],
+                placeholder2: ["anal2_1", "anal2_2", "anal2_3"],
+                placeholder3: ["anal3_1", "anal3_2", "anal3_3"],
+                placeholder4: ["anal4_1", "anal4_2", "anal4_3"],
+            },
+        };
+    
         if (!type) {
             type = Math.random() < 0.5 ? "vaginal" : "anal";
         }
-
-        const images = {
-            vaginal: {
-                placeholder: ["gif1", "gif2", "gif3"],
-            },
-            anal: {
-                placeholder: ["gif4", "gif5", "gif6"],
-            },
-        };
-
-        if (!images[type] || !images[type][pose] || images[type][pose].length === 0) {
-            console.error(`❌ No images found for type: ${type}, pose: ${pose}`);
+    
+        if (!images[type][pose]) {
+            console.error(`❌ No images found for pose: ${pose} and type: ${type}`);
             return interaction.reply({ content: "❌ No images available!", ephemeral: true });
         }
-
+    
         const randomIndex = Math.floor(Math.random() * images[type][pose].length);
         console.log(`Selected GIF Index for ${type}/${pose}: ${randomIndex}`);
         const image = images[type][pose][randomIndex];
-
+    
         const embed = new EmbedBuilder()
             .setTitle("🔥 Steamy Interaction!")
             .setDescription(`${sender} is having fun with ${recipient}! 😏`)
             .setImage(image)
             .setColor("#FF007F")
             .setTimestamp();
-
+    
         await interaction.reply({ embeds: [embed] });
-    }
+    }    
 
     if (interaction.commandName === "lick") {
         const sender = interaction.user;
