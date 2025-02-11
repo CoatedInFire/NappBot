@@ -92,7 +92,7 @@ async function createTable() {
     await connection.execute(`
           CREATE TABLE IF NOT EXISTS global_stats (
               stat_name VARCHAR(255) PRIMARY KEY,
-              stat_value VARCHAR(255)
+              stat_value INT DEFAULT 0
           )
       `);
     console.log("global_stats table created (or already exists).");
@@ -114,17 +114,17 @@ async function createTable() {
   }
 }
 
-async function getUserPreference(userId) {
-  try {
-    const [rows] = await pool.execute(
-      "SELECT sex FROM users WHERE user_id = ?",
-      [userId]
-    );
-    return rows[0]?.sex || "random";
-  } catch (error) {
-    console.error("Error getting user preference:", error);
-    return "random";
+async function getOrCreateUser(userId) {
+  let user = await getUserFromDatabase(userId); // Fetch user
+
+  if (!user) {
+    console.log(`User ${userId} not found in database. Adding user...`);
+
+    await addUserToDatabase(userId); // Insert new user
+    user = await getUserFromDatabase(userId); // Fetch again after insert
   }
+
+  return user;
 }
 
 async function setUserPreference(userId, sex) {
@@ -160,6 +160,17 @@ async function getFavoriteCommand(userId) {
   } catch (error) {
     console.error("Error getting favorite command:", error);
     return "None";
+  }
+}
+
+async function addUserToDatabase(userId) {
+  try {
+    await pool.execute(
+      "INSERT INTO users (user_id, sex, total_commands, favorite_command) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE user_id = user_id",
+      [userId, "Random", 0, "None"]
+    );
+  } catch (error) {
+    console.error("Error adding user to database:", error);
   }
 }
 
@@ -269,12 +280,7 @@ async function updateGlobalStats(commandName) {
       "SELECT count FROM command_usage WHERE command_name = ?",
       [commandName]
     );
-
-    let count = 0;
-    if (rows.length > 0) {
-      count = rows[0].count; // Ensure it's a number
-    }
-
+    let count = rows.length > 0 && rows[0].count ? Number(rows[0].count) : 0;
     // Insert or update command count properly
     await pool.execute(
       "INSERT INTO command_usage (command_name, count) VALUES (?, ?) ON DUPLICATE KEY UPDATE count = ?",
@@ -291,7 +297,6 @@ async function updateUserCommandCounts(userId, commandName) {
     (userCommandCounts[userId][commandName] || 0) + 1;
 }
 
-// Functions for Global Stats, Top Users, and Most Used Commands
 async function getTotalCommandsGlobal() {
   try {
     const [rows] = await pool.execute(
@@ -366,6 +371,21 @@ async function getGlobalStat(stat_name) {
   } catch (error) {
     console.error("Error getting global stat:", error);
     return 0;
+  }
+}
+
+async function getOrCreateUser(userId) {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT user_id FROM users WHERE user_id = ?",
+      [userId]
+    );
+    if (rows.length === 0) {
+      console.log(`User ${userId} not found, adding to database.`);
+      await addUserToDatabase(userId);
+    }
+  } catch (error) {
+    console.error(`Error in getOrCreateUser for ${userId}:`, error);
   }
 }
 
@@ -943,6 +963,11 @@ client.on("interactionCreate", async (interaction) => {
 
       try {
         const userId = interaction.user.id;
+
+        // Fetch user, creating if necessary
+        await getOrCreateUser(userId);
+
+        // Fetch user stats
         const sex = (await getUserPreference(userId)) || "Random";
         const totalCommands = (await getTotalCommands(userId)) || 0;
         const favoriteCommand = (await getFavoriteCommand(userId)) || "None";
@@ -1016,7 +1041,7 @@ client.on("interactionCreate", async (interaction) => {
         console.error("❌ Error fetching settings:", error);
         await interaction.editReply({
           content: "❌ An error occurred while fetching your settings.",
-        }); // Ensure the error response uses editReply()
+        });
       }
     }
 
