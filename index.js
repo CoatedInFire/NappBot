@@ -76,7 +76,7 @@ const commands = [
                 ],
             },
         ],
-    }
+    },
     {
         name: "lick",
         description: "👅 Lick someone!",
@@ -88,8 +88,7 @@ const commands = [
                 required: true,
             },
         ],
-    }
-    
+    },
 ];
 
 
