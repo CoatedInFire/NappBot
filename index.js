@@ -58,7 +58,7 @@ const commands = [
     // Hug
     {
         name: "hug",
-        description: "Hug someone!",
+        description: "🤗 Hug someone!",
         options: [
             { name: "user", type: 6, description: "User to hug", required: true },
             { name: "custom_gif", type: 3, description: "Custom Img / GIF (Optional)", required: false },
