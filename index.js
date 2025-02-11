@@ -1,4 +1,11 @@
-require("dotenv").config();
+require("dotenv").config(); // Load environment variables FIRST
+
+const { URL } = require("node:url"); // At the very top of your index.js (or db.js)
+
+const dbUrl = process.env.MYSQL_PUBLIC_URL
+  ? new URL(process.env.MYSQL_PUBLIC_URL)
+  : null; // Check if the variable exists
+
 const {
   Client,
   GatewayIntentBits,
@@ -23,31 +30,39 @@ const client = new Client({
   ],
 });
 
-// 1. MySQL Connection Pool
-const pool = mysql.createPool({
-  host: process.env.MYSQL_HOST,
-  port: process.env.MYSQL_PORT,
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
-});
+// 1. MySQL Connection Pool (Conditional)
+let pool; // Declare pool outside the if statement
 
-async function testConnection() {
-  try {
-    const connection = await pool.getConnection();
-    console.log("Successfully connected to MySQL database!");
-    connection.release();
-  } catch (error) {
-    console.error("Error connecting to MySQL:", error);
+if (dbUrl) {
+  // Only attempt to create the pool if the URL exists
+  pool = mysql.createPool({
+    host: dbUrl.hostname,
+    port: parseInt(dbUrl.port, 10),
+    user: dbUrl.username,
+    password: dbUrl.password,
+    database: dbUrl.pathname.substring(1), // Remove leading slash
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+  });
+
+  async function testConnection() {
+    try {
+      const connection = await pool.getConnection();
+      console.log("Successfully connected to MySQL database!");
+      connection.release();
+    } catch (error) {
+      console.error("Error connecting to MySQL:", error);
+    }
   }
+
+  testConnection();
+} else {
+  console.error("MYSQL_PUBLIC_URL environment variable is not set!");
+  process.exit(1); // Exit if the URL isn't found
 }
 
-testConnection();
-
-// 2. Create Table (if it doesn't exist)
+// 2. Create Table (if it doesn't exist) - Moved INSIDE client.once('ready')
 async function createTable() {
   try {
     const connection = await pool.getConnection();
@@ -66,8 +81,6 @@ async function createTable() {
     console.error("Error creating table:", error);
   }
 }
-
-createTable();
 
 // 3. Replace file-based functions with MySQL functions
 async function getUserPreference(userId) {
@@ -121,6 +134,26 @@ async function getFavoriteCommand(userId) {
 
 const token = process.env.TOKEN;
 const clientId = process.env.CLIENT_ID;
+
+client.once("ready", async () => {
+    console.log(`✅ Logged in as ${client.user.tag}!`);
+
+    // Call createTable() HERE, after the bot is ready
+    try {
+        await createTable();
+    } catch (error) {
+        console.error("Error creating table:", error);
+    }
+
+    const rest = new REST({ version: "10" }).setToken(token);
+    try {
+        console.log("🔄 Refreshing slash commands...");
+        await rest.put(Routes.applicationCommands(clientId), { body: commands });
+        console.log("✅ Successfully updated commands!");
+    } catch (error) {
+        console.error("❌ Error updating commands:", error);
+    }
+});
 
 async function fetchE621Image(tags = []) {
   const query = tags.join("+");
@@ -817,26 +850,13 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
-client.once("ready", async () => {
-  console.log(`✅ Logged in as ${client.user.tag}!`);
-
-  const rest = new REST({ version: "10" }).setToken(token);
-  try {
-    console.log("🔄 Refreshing slash commands...");
-    await rest.put(Routes.applicationCommands(clientId), { body: commands });
-    console.log("✅ Successfully updated commands!");
-  } catch (error) {
-    console.error("❌ Error updating commands:", error);
-  }
-});
-
 client.login(token);
 
 app.get("/", (req, res) => {
   res.send("Bot is alive!");
 });
 
-const port = process.env.PORT || 3000; // Use environment variable for port or default to 3000
+const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`✅ Bot is running 24/7 on port ${port}`);
 });
