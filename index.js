@@ -136,23 +136,23 @@ const token = process.env.TOKEN;
 const clientId = process.env.CLIENT_ID;
 
 client.once("ready", async () => {
-    console.log(`✅ Logged in as ${client.user.tag}!`);
+  console.log(`✅ Logged in as ${client.user.tag}!`);
 
-    // Call createTable() HERE, after the bot is ready
-    try {
-        await createTable();
-    } catch (error) {
-        console.error("Error creating table:", error);
-    }
+  // Call createTable() HERE, after the bot is ready
+  try {
+    await createTable();
+  } catch (error) {
+    console.error("Error creating table:", error);
+  }
 
-    const rest = new REST({ version: "10" }).setToken(token);
-    try {
-        console.log("🔄 Refreshing slash commands...");
-        await rest.put(Routes.applicationCommands(clientId), { body: commands });
-        console.log("✅ Successfully updated commands!");
-    } catch (error) {
-        console.error("❌ Error updating commands:", error);
-    }
+  const rest = new REST({ version: "10" }).setToken(token);
+  try {
+    console.log("🔄 Refreshing slash commands...");
+    await rest.put(Routes.applicationCommands(clientId), { body: commands });
+    console.log("✅ Successfully updated commands!");
+  } catch (error) {
+    console.error("❌ Error updating commands:", error);
+  }
 });
 
 async function fetchE621Image(tags = []) {
@@ -754,7 +754,7 @@ client.on("interactionCreate", async (interaction) => {
                 { name: "Preferred Sex", value: sex || "Random", inline: true },
                 {
                   name: "Total Commands Used",
-                  value: totalCommands,
+                  value: String(totalCommands), // Corrected: Convert to string
                   inline: true,
                 },
                 {
