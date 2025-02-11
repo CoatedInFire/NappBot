@@ -18,6 +18,8 @@ const {
   ButtonStyle,
   MessageFlags,
   ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } = require("discord.js");
 const mysql = require("mysql2/promise");
 const fetch = require("node-fetch");
@@ -951,46 +953,47 @@ client.on("interactionCreate", async (interaction) => {
             ? await getTotalCommands(topUser.replace(/\D/g, ""))
             : 0;
 
-        const embed = new EmbedBuilder()
-          .setColor(0x5865f2)
-          .setTitle("📊 User Settings & Bot Statistics")
-          .addFields(
-            {
-              name: "👤 Your Stats | 🌍 Global Stats",
-              value:
-                `📌 **Total Commands Used:** ${totalCommands || 0} | **${
-                  globalCommands || 0
-                }**\n` +
-                `⭐ **Favorite Command:** /${favoriteCommand || "None"}\n` +
-                `💬 **Sex Preference:** ${sex}`,
-            },
-            {
-              name: "🏆 Top User | 🔥 Most Used Command",
-              value:
-                `👑 **@${topUser}** - ${topUserTotalCommands || 0} commands\n` +
-                `🔹 **/${mostUsedCommand || "None"}** - ${
-                  mostUsedCommandCount || 0
-                } uses`,
-            }
-          )
-          .setFooter({
-            text: `Requested by ${
-              interaction.user.tag
-            } • ${new Date().toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}`,
-            iconURL: interaction.user.displayAvatarURL(),
-          });
-
-        const row = new ActionRowBuilder().addComponents(
-          new ButtonBuilder()
-            .setCustomId("edit_preferences")
-            .setLabel("⚙️ Change Preferences")
-            .setStyle(ButtonStyle.Primary)
-        );
-
-        await interaction.editReply({ embeds: [embed], components: [row] }); // Use editReply() instead of reply()
+            const embed = new EmbedBuilder()
+            .setColor(0x5865f2)
+            .setTitle("📊 User Settings & Bot Statistics")
+            .addFields(
+              { 
+                name: "⚙️ Your Stats", 
+                value: 
+                  `📌 **Total Commands Used:** ${totalCommands || 0}\n` +
+                  `⭐ **Favorite Command:** /${favoriteCommand || "None"}\n` +
+                  `💬 **Sex Preference:** ${sex}` 
+              },
+              { 
+                name: "🌍 Global Stats", 
+                value: `📌 **Total Commands Run:** ${globalCommands || 0}`
+              },
+              { 
+                name: "🏆 Top Users", 
+                value: `👑 **@${topUser}** - ${topUserTotalCommands || 0} commands`
+              },
+              { 
+                name: "🔥 Most Used Commands", 
+                value: `🔹 **/${mostUsedCommand || "None"}** - ${mostUsedCommandCount || 0} uses`
+              }
+            )
+            .setFooter({
+              text: `Requested by ${interaction.user.tag} • ${new Date().toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`,
+              iconURL: interaction.user.displayAvatarURL(),
+            });
+          
+          const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+              .setCustomId("edit_preferences")
+              .setLabel("⚙️ Change Preferences")
+              .setStyle(ButtonStyle.Primary)
+          );
+          
+          await interaction.reply({ embeds: [embed], components: [row] });
+          
       } catch (error) {
         console.error("❌ Error fetching settings:", error);
         await interaction.editReply({
@@ -1012,21 +1015,23 @@ client.on("interactionCreate", async (interaction) => {
     }
 
     // Handle Button Interactions
-    if (interaction.isButton() && interaction.customId === "edit_preferences") {
-      const modal = new ModalBuilder()
-        .setCustomId("preference_modal")
-        .setTitle("Edit Preferences");
+    if (interaction.isButton()) {
+      if (interaction.customId === "edit_preferences") {
+        const modal = new ModalBuilder()
+          .setCustomId("preference_modal")
+          .setTitle("Edit Preferences");
 
-      const sexInput = new TextInputBuilder()
-        .setCustomId("sex_input")
-        .setLabel("Preferred Sex (male, female, other)")
-        .setStyle(TextInputStyle.Short)
-        .setRequired(false);
+        const sexInput = new TextInputBuilder()
+          .setCustomId("sex_input")
+          .setLabel("Preferred Sex (male, female, other)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(false);
 
-      const firstActionRow = new ActionRowBuilder().addComponents(sexInput);
-      modal.addComponents(firstActionRow);
+        const firstActionRow = new ActionRowBuilder().addComponents(sexInput);
+        modal.addComponents(firstActionRow);
 
-      await interaction.showModal(modal);
+        await interaction.showModal(modal);
+      }
     }
 
     // Handle Modal Submissions (Consolidated)
