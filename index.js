@@ -1,3 +1,10 @@
+if (global.fsLoaded) {
+    console.log("fs already loaded, skipping redeclaration.");
+} else {
+    global.fsLoaded = true;
+    const fs = require('fs');
+}
+
 const fs = require("fs");
 const profilesFile = "profiles.json";
 
@@ -104,7 +111,6 @@ async function fetchE621Image(tags = []) {
 }
 
 // Command Tracking
-const fs = require('fs');
 const profilesPath = 'profiles.json';
 
 function trackCommandUsage(interaction) {
