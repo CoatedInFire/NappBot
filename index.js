@@ -514,8 +514,13 @@ client.on("interactionCreate", async (interaction) => {
         const sender = interaction.user;
         const userId = sender.id;
 
+        console.log("Debug: profiles =", profiles);
+        console.log("Debug: profiles.users =", profiles.users);
+        console.log(`Debug: profiles.users[${userId}] =`, profiles.users[userId]);
+
+        if (!profiles.users) profiles.users = {};
         if (!profiles.users[userId]) {
-            return interaction.reply({ content: "❌ No data found for you yet!", flags: 64 });
+            return interaction.reply({ content: "❌ No data found for you yet!", ephemeral: true });
         }
 
         const userStats = profiles.users[userId].usage;
@@ -592,6 +597,8 @@ client.on("interactionCreate", async (interaction) => {
         // Handle preference selection
         if (interaction.customId.startsWith("set_preference_")) {
             const newPreference = interaction.customId.replace("set_preference_", "");
+            if (!profiles.users) profiles.users = {};
+            if (!profiles.users[interaction.user.id]) profiles.users[interaction.user.id] = { sex: "random", usage: { total_commands: 0, favorite_command: null, command_counts: {} } };
             profiles.users[interaction.user.id].sex = newPreference;
 
             fs.writeFileSync("profiles.json", JSON.stringify(profiles, null, 2));
