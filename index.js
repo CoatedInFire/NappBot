@@ -272,16 +272,14 @@ async function getTotalCommandsGlobal() {
 
 async function getTopUser() {
   try {
-    const [rows] = await pool.execute(
-      `
-            SELECT user_id, SUM(count) AS total_commands
-            FROM command_usage
-            GROUP BY user_id
-            ORDER BY total_commands DESC
-            LIMIT 1
-        `,
-      []
-    );
+    const [rows] = await pool.execute(`
+          SELECT u.user_id, SUM(cu.count) AS total_commands
+          FROM command_usage cu
+          INNER JOIN users u ON u.user_id = cu.user_id  -- Join with the users table
+          GROUP BY u.user_id
+          ORDER BY total_commands DESC
+          LIMIT 1
+      `);
     return rows[0]?.user_id ? `<@${rows[0].user_id}>` : "No users yet";
   } catch (error) {
     console.error("Error getting top user:", error);
@@ -898,9 +896,12 @@ client.on("interactionCreate", async (interaction) => {
     const userId = interaction.user.id;
 
     try {
-      const sex = await getUserPreference(userId); // Use await here
-      const totalCommands = await getTotalCommands(userId); // Use await here
-      const favoriteCommand = await getFavoriteCommand(userId); // Use await here
+      const sex = await getUserPreference(userId);
+      const totalCommands = await getTotalCommands(userId);
+      const favoriteCommand = await getFavoriteCommand(userId);
+      const topUser = await getTopUser();
+    
+      const topUserTotalCommands = await getTotalCommands(topUser.replace(/<@>/g, ''));
 
       if (!sex) {
         // No settings found
@@ -939,9 +940,7 @@ client.on("interactionCreate", async (interaction) => {
           { name: "\u200b", value: "\u200b", inline: true },
           { name: "Top Users", value: "\u200b", inline: true },
           {
-            name: `@${topUser}`,
-            value: `${await getTotalCommands(topUser)} commands`,
-            inline: true,
+            { name: `@${topUser}`, value: `${topUserTotalCommands} commands`, inline: true }, 
           }, // Await getTotalCommands
           { name: "\u200b", value: "\u200b", inline: true },
           { name: "Most Used Commands", value: "\u200b", inline: true },
