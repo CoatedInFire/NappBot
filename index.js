@@ -1,67 +1,55 @@
 require("dotenv").config();
-
 const { URL } = require("node:url");
-
-const {
-  Client,
-  GatewayIntentBits,
-  REST,
-  Routes,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  MessageFlags,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
-} = require("discord.js");
-const fetch = require("node-fetch");
-const express = require("express");
 const mysql = require("mysql2/promise");
+const express = require("express");
+const fetch = require("node-fetch");
+
 const app = express();
-const { parse } = require("url");
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// Ensure environment variable is set
 const dbUrl = process.env.MYSQL_PUBLIC_URL;
-const { hostname, pathname, auth, port: dbPort } = new URL(dbUrl); // Renamed `port` to `dbPort`
-const [user, password] = auth.split(":");
-
-const database = mysql.createPool({
-    host: hostname,
-    port: dbPort,  // Use `dbPort` instead of `port`
-    user: user,
-    password: password,
-    database: pathname.substring(1), // Remove leading '/'
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
-});
-
-// Create the table if it doesn't exist
-async function setupDatabase() {
-    try {
-        await database.execute(`
-            CREATE TABLE IF NOT EXISTS user_preferences (
-                user_id VARCHAR(50) PRIMARY KEY,
-                preference ENUM('male', 'female', 'random') DEFAULT 'random'
-            )
-        `);
-        console.log("✅ MySQL Table 'user_preferences' is ready!");
-    } catch (error) {
-        console.error("❌ Error creating MySQL table:", error);
-    }
+if (!dbUrl) {
+  console.error("❌ MYSQL_PUBLIC_URL is not set in environment variables!");
+  process.exit(1);
 }
 
-// Run the setup function
-setupDatabase();
+// Parse MySQL URL safely
+try {
+  const dbUri = new URL(dbUrl);
 
-module.exports = database;
+  const host = dbUri.hostname;
+  const port = dbUri.port || 3306; // Default MySQL port
+  const database = dbUri.pathname.replace("/", ""); // Remove leading slash
+  const user = dbUri.username || "root";
+  const password = dbUri.password || "";
+
+  // Create MySQL connection pool
+  const databasePool = mysql.createPool({
+    host,
+    port,
+    user,
+    password,
+    database,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+  });
+
+  console.log("✅ Connected to MySQL database!");
+
+  module.exports = databasePool;
+} catch (error) {
+  console.error("❌ Failed to parse MySQL URL:", error);
+  process.exit(1);
+}
 
 // MySQL Functions
 async function getUserPreference(userId) {
   try {
     const query = `SELECT preference FROM user_preferences WHERE user_id = ?`;
-    const [rows] = await database.execute(query, [userId]);
+    const [rows] = await databasePool.execute(query, [userId]);
 
     return rows.length > 0 ? rows[0].preference : "random"; // Default to random
   } catch (error) {
@@ -75,11 +63,11 @@ async function setUserPreference(userId, preference) {
 
   try {
     const query = `
-          INSERT INTO user_preferences (user_id, preference) 
-          VALUES (?, ?) 
-          ON DUPLICATE KEY UPDATE preference = VALUES(preference);
-      `;
-    await database.execute(query, [userId, preference]);
+      INSERT INTO user_preferences (user_id, preference) 
+      VALUES (?, ?) 
+      ON DUPLICATE KEY UPDATE preference = VALUES(preference);
+    `;
+    await databasePool.execute(query, [userId, preference]);
     return true;
   } catch (error) {
     console.error("MySQL Error (setUserPreference):", error);
