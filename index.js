@@ -58,6 +58,17 @@ try {
   process.exit(1);
 }
 
+const token = process.env.TOKEN;
+if (!token) {
+  console.error("❌ TOKEN is not set in environment variables!");
+  process.exit(1);
+}
+const clientId = process.env.CLIENT_ID;
+if (!clientId) {
+  console.error("❌ CLIENT_ID is not set in environment variables!");
+  process.exit(1);
+}
+
 // MySQL Functions
 async function getUserPreference(userId) {
   try {
