@@ -121,7 +121,7 @@ async function getOrCreateUser(userId) {
     ]);
 
     if (rows.length === 0) {
-      console.log(`User ${userId} not found, adding to database.`);
+      console.log(`⚠️ User ${userId} not found, adding to database.`);
       await addUserToDatabase(userId);
 
       // Fetch again after inserting to ensure it's returned
@@ -129,6 +129,12 @@ async function getOrCreateUser(userId) {
         "SELECT * FROM users WHERE user_id = ?",
         [userId]
       );
+
+      if (newUser.length === 0) {
+        console.error(`❌ Failed to insert user ${userId} into database!`);
+        return null;
+      }
+
       return newUser[0]; // Return the newly created user
     }
 
@@ -282,8 +288,10 @@ async function fetchE621Image(tags = []) {
 
     return {
       imageUrl: post.file?.url || "No image available",
-      artists: post.tags.artist.length > 0 ? post.tags.artist.join(", ") : "Unknown",
-      characters: post.tags.character.slice(0, 3).join(", ") || "No characters tagged",
+      artists:
+        post.tags.artist.length > 0 ? post.tags.artist.join(", ") : "Unknown",
+      characters:
+        post.tags.character.slice(0, 3).join(", ") || "No characters tagged",
       score: post.score.total || 0,
       favCount: post.fav_count || 0,
       postId: post.id || "Unknown",
@@ -294,7 +302,6 @@ async function fetchE621Image(tags = []) {
     return null;
   }
 }
-
 
 // Global Variables to Store Stats (Initialize as needed)
 let totalCommandsGlobal = 0;
@@ -323,11 +330,31 @@ async function updateGlobalStats(commandName) {
   }
 }
 
-
 async function updateUserCommandCounts(userId, commandName) {
   userCommandCounts[userId] = userCommandCounts[userId] || {};
   userCommandCounts[userId][commandName] =
     (userCommandCounts[userId][commandName] || 0) + 1;
+}
+
+async function updateUserSettings(userId, newSettings) {
+  try {
+    // Make sure user exists
+    const user = await getOrCreateUser(userId);
+    if (!user) {
+      console.error(`❌ Could not find or create user ${userId}!`);
+      return;
+    }
+
+    // Now update the settings
+    await pool.execute(
+      "UPDATE users SET some_setting_column = ? WHERE user_id = ?",
+      [newSettings, userId]
+    );
+
+    console.log(`✅ Updated settings for User ID: ${userId}`);
+  } catch (error) {
+    console.error("❌ Error updating user settings:", error);
+  }
 }
 
 async function getTotalCommandsGlobal() {
@@ -406,7 +433,6 @@ async function getGlobalStat(stat_name) {
     return 0;
   }
 }
-
 
 // Slash commands
 const commands = [
