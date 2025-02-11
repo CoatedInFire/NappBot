@@ -894,117 +894,88 @@ client.on("interactionCreate", async (interaction) => {
 
     await interaction.reply({ embeds: [embed] });
   }
-  // Settings
   if (interaction.commandName === "settings") {
     const userId = interaction.user.id;
 
-    getUserPreference(userId)
-      .then((sex) => {
-        if (!sex) {
-          // No settings found
-          const embed = new EmbedBuilder()
-            .setColor(0x7289da)
-            .setTitle("Your Settings")
-            .setDescription("You have no settings saved yet.")
-            .setFooter({
-              text: "Click the button below to generate default settings.",
-            });
+    try {
+      const sex = await getUserPreference(userId); // Use await here
+      const totalCommands = await getTotalCommands(userId); // Use await here
+      const favoriteCommand = await getFavoriteCommand(userId); // Use await here
 
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("generate_defaults")
-              .setLabel("Generate Defaults")
-              .setStyle(ButtonStyle.Primary)
-          );
+      if (!sex) {
+        // No settings found
+        const embed = new EmbedBuilder();
+        // ... (rest of the embed for no settings)
 
-          return interaction.reply({
-            embeds: [embed],
-            components: [row],
-            // Removed flags: [MessageFlags.Ephemeral], // Make it non-ephemeral
-          });
-        }
+        const row = new ActionRowBuilder();
+        // ... (rest of the action row for no settings)
 
-        getTotalCommands(userId).then((totalCommands) => {
-          getFavoriteCommand(userId).then((favoriteCommand) => {
-            const embed = new EmbedBuilder()
-              .setColor(0x7289da)
-              .setTitle("User Settings & Bot Statistics") // Updated title
-              .setDescription("Your Stats") // Added description for "Your Stats" section
-              .addFields(
-                {
-                  name: "Total Commands Used",
-                  value: String(totalCommands),
-                  inline: true,
-                },
-                {
-                  name: "Favorite Command",
-                  value: favoriteCommand,
-                  inline: true,
-                },
-                { name: "Sex Preference", value: sex || "Random", inline: true } // Moved Sex Preference to its own field
-              )
-              .addFields(
-                // Added Global Stats section
-                { name: "Global Stats", value: "\u200b", inline: true }, // Empty field for spacing
-                {
-                  name: "Total Commands Run",
-                  value: String(getTotalCommandsGlobal()),
-                  inline: true,
-                }, // Replace with your global count function
-                { name: "\u200b", value: "\u200b", inline: true } // Empty field for spacing
-              )
-              .addFields(
-                // Added Top Users section
-                { name: "Top Users", value: "\u200b", inline: true }, // Empty field for spacing
-                {
-                  name: `@${getTopUser()}`,
-                  value: `${getTotalCommands(getTopUser())} commands`,
-                  inline: true,
-                }, // Replace with your top user function
-                { name: "\u200b", value: "\u200b", inline: true } // Empty field for spacing
-              )
-              .addFields(
-                // Added Most Used Commands section
-                { name: "Most Used Commands", value: "\u200b", inline: true }, // Empty field for spacing
-                {
-                  name: `/${getMostUsedCommand()}`,
-                  value: `${getMostUsedCommandCount()} uses`,
-                  inline: true,
-                }, // Replace with your most used command function
-                { name: "\u200b", value: "\u200b", inline: true } // Empty field for spacing
-              )
-              .setFooter({
-                text: `Requested by ${
-                  interaction.user.tag
-                } Today at ${new Date().toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}`, // Updated footer
-                iconURL: interaction.user.displayAvatarURL(),
-              });
+        return interaction.reply({ embeds: [embed], components: [row] });
+      }
 
-            const row = new ActionRowBuilder().addComponents(
-              new ButtonBuilder()
-                .setCustomId("edit_preferences")
-                .setLabel("Change Preferences") // Updated button label
-                .setStyle(ButtonStyle.Primary)
-            );
+      const globalCommands = await getTotalCommandsGlobal(); // Await global commands
+      const topUser = await getTopUser(); // Await top user
+      const mostUsedCommand = await getMostUsedCommand(); // Await most used command
+      const mostUsedCommandCount = await getMostUsedCommandCount(); // Await most used command count
 
-            interaction.reply({
-              embeds: [embed],
-              components: [row],
-              // Removed flags: [MessageFlags.Ephemeral], // Make it non-ephemeral
-            });
-          });
+      const embed = new EmbedBuilder()
+        .setColor(0x7289da)
+        .setTitle("User Settings & Bot Statistics")
+        .setDescription("Your Stats")
+        .addFields(
+          {
+            name: "Total Commands Used",
+            value: String(totalCommands),
+            inline: true,
+          },
+          { name: "Favorite Command", value: favoriteCommand, inline: true },
+          { name: "Sex Preference", value: sex || "Random", inline: true },
+          { name: "Global Stats", value: "\u200b", inline: true },
+          {
+            name: "Total Commands Run",
+            value: String(globalCommands),
+            inline: true,
+          }, // Use awaited value
+          { name: "\u200b", value: "\u200b", inline: true },
+          { name: "Top Users", value: "\u200b", inline: true },
+          {
+            name: `@${topUser}`,
+            value: `${await getTotalCommands(topUser)} commands`,
+            inline: true,
+          }, // Await getTotalCommands
+          { name: "\u200b", value: "\u200b", inline: true },
+          { name: "Most Used Commands", value: "\u200b", inline: true },
+          {
+            name: `/${mostUsedCommand}`,
+            value: `${mostUsedCommandCount} uses`,
+            inline: true,
+          }, // Use awaited value
+          { name: "\u200b", value: "\u200b", inline: true }
+        )
+        .setFooter({
+          text: `Requested by ${
+            interaction.user.tag
+          } Today at ${new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`,
+          iconURL: interaction.user.displayAvatarURL(),
         });
-      })
-      .catch((error) => {
-        console.error("Error fetching settings:", error);
-        interaction.reply({
-          content: "An error occurred while fetching your settings.",
-          // Removed flags: [MessageFlags.Ephemeral], // Make it non-ephemeral
-        });
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("edit_preferences")
+          .setLabel("Change Preferences")
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      interaction.reply({ embeds: [embed], components: [row] });
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      interaction.reply({
+        content: "An error occurred while fetching your settings.",
       });
+    }
   }
   // Set Preference FALLBACK
   if (interaction.commandName === "setpreference") {
