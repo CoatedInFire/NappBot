@@ -218,7 +218,7 @@ async function fetchE621Image(tags = []) {
 
     return { imageUrl, artists, characters, score, favCount, postId, postUrl };
   } catch (error) {
-    console.error("Error fetching image from e621:", error);
+    console.error("Error fetching image from e621:", error.message);
     return null;
   }
 }
@@ -273,13 +273,11 @@ async function getTotalCommandsGlobal() {
 async function getTopUser() {
   try {
     const [rows] = await pool.execute(`
-          SELECT u.user_id, SUM(cu.count) AS total_commands
-          FROM command_usage cu
-          INNER JOIN users u ON u.user_id = cu.user_id  -- Join with the users table
-          GROUP BY u.user_id
-          ORDER BY total_commands DESC
-          LIMIT 1
-      `);
+      SELECT user_id, total_commands
+      FROM users
+      ORDER BY total_commands DESC
+      LIMIT 1
+    `);
     return rows[0]?.user_id ? `<@${rows[0].user_id}>` : "No users yet";
   } catch (error) {
     console.error("Error getting top user:", error);
@@ -509,11 +507,13 @@ client.on("interactionCreate", async (interaction) => {
   const commandName = interaction.commandName;
 
   try {
+    // Update total commands for user
     await pool.execute(
       "UPDATE users SET total_commands = total_commands + 1 WHERE user_id = ?",
       [userId]
     );
 
+    // Fetch and update command usage stats
     const [rows] = await pool.execute(
       "SELECT command_counts FROM users WHERE user_id = ?",
       [userId]
@@ -521,19 +521,21 @@ client.on("interactionCreate", async (interaction) => {
     const commandCounts = rows[0]?.command_counts
       ? JSON.parse(rows[0].command_counts)
       : {};
+
     commandCounts[commandName] = (commandCounts[commandName] || 0) + 1;
     await pool.execute(
       "UPDATE users SET command_counts = ? WHERE user_id = ?",
       [JSON.stringify(commandCounts), userId]
     );
 
+    // Determine favorite command
     let favoriteCommand = null;
     let maxCount = 0;
 
     for (const cmd in commandCounts) {
       if (commandCounts[cmd] > maxCount) {
         maxCount = commandCounts[cmd];
-        favoriteCommand = cmd;
+        favoriteCommand = cmd; // Store the command with the highest count
       }
     }
 
@@ -892,32 +894,19 @@ client.on("interactionCreate", async (interaction) => {
 
     await interaction.reply({ embeds: [embed] });
   }
+  // Settings
   if (interaction.commandName === "settings") {
-    const userId = interaction.user.id;
-
     try {
       const sex = await getUserPreference(userId);
       const totalCommands = await getTotalCommands(userId);
       const favoriteCommand = await getFavoriteCommand(userId);
       const topUser = await getTopUser();
-    
-      const topUserTotalCommands = await getTotalCommands(topUser.replace(/<@>/g, ''));
-
-      if (!sex) {
-        // No settings found
-        const embed = new EmbedBuilder();
-        // ... (rest of the embed for no settings)
-
-        const row = new ActionRowBuilder();
-        // ... (rest of the action row for no settings)
-
-        return interaction.reply({ embeds: [embed], components: [row] });
-      }
-
-      const globalCommands = await getTotalCommandsGlobal(); // Await global commands
-      const topUser = await getTopUser(); // Await top user
-      const mostUsedCommand = await getMostUsedCommand(); // Await most used command
-      const mostUsedCommandCount = await getMostUsedCommandCount(); // Await most used command count
+      const topUserTotalCommands = await getTotalCommands(
+        topUser.replace(/\D/g, "")
+      );
+      const globalCommands = await getTotalCommandsGlobal();
+      const mostUsedCommand = await getMostUsedCommand();
+      const mostUsedCommandCount = await getMostUsedCommandCount();
 
       const embed = new EmbedBuilder()
         .setColor(0x7289da)
@@ -936,25 +925,30 @@ client.on("interactionCreate", async (interaction) => {
             name: "Total Commands Run",
             value: String(globalCommands),
             inline: true,
-          }, // Use awaited value
+          },
           { name: "\u200b", value: "\u200b", inline: true },
-          { name: "Top Users", value: "\u200b", inline: true },
+          { name: "Top User", value: `@${topUser}`, inline: true },
           {
-            { name: `@${topUser}`, value: `${topUserTotalCommands} commands`, inline: true }, 
-          }, // Await getTotalCommands
+            name: "Commands Used",
+            value: `${topUserTotalCommands} commands`,
+            inline: true,
+          },
           { name: "\u200b", value: "\u200b", inline: true },
-          { name: "Most Used Commands", value: "\u200b", inline: true },
           {
-            name: `/${mostUsedCommand}`,
+            name: "Most Used Command",
+            value: `/${mostUsedCommand}`,
+            inline: true,
+          },
+          {
+            name: "Usage Count",
             value: `${mostUsedCommandCount} uses`,
             inline: true,
-          }, // Use awaited value
-          { name: "\u200b", value: "\u200b", inline: true }
+          }
         )
         .setFooter({
           text: `Requested by ${
             interaction.user.tag
-          } Today at ${new Date().toLocaleTimeString([], {
+          } at ${new Date().toLocaleTimeString([], {
             hour: "2-digit",
             minute: "2-digit",
           })}`,
@@ -968,15 +962,17 @@ client.on("interactionCreate", async (interaction) => {
           .setStyle(ButtonStyle.Primary)
       );
 
-      interaction.reply({ embeds: [embed], components: [row] });
+      await interaction.reply({ embeds: [embed], components: [row] });
     } catch (error) {
       console.error("Error fetching settings:", error);
-      interaction.reply({
+      await interaction.reply({
         content: "An error occurred while fetching your settings.",
+        ephemeral: true,
       });
     }
   }
-  // Set Preference FALLBACK
+
+  // Set Preference Command
   if (interaction.commandName === "setpreference") {
     const sender = interaction.user;
     const sex = interaction.options.getString("sex");
@@ -985,7 +981,7 @@ client.on("interactionCreate", async (interaction) => {
 
     await interaction.reply({
       content: `✅ Your preference has been set to **${sex}**!`,
-      flags: [MessageFlags.Ephemeral],
+      ephemeral: true,
     });
   }
 });
