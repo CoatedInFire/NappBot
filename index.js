@@ -233,7 +233,7 @@ client.on("interactionCreate", async (interaction) => {
         if (!recipient) {
             return interaction.reply({
                 content: "❌ You must mention a user!",
-                ephemeral: true,
+                flags: 64,
             });
         }
 
@@ -290,7 +290,7 @@ client.on("interactionCreate", async (interaction) => {
         if (recipient.id === sender.id) {
             return interaction.reply({
                 content: "❌ You can't do this to yourself...",
-                ephemeral: true,
+                flags: 64,
             });
         }
     
@@ -316,7 +316,7 @@ client.on("interactionCreate", async (interaction) => {
     
         if (!images[type][pose]) {
             console.error(`❌ No images found for pose: ${pose} and type: ${type}`);
-            return interaction.reply({ content: "❌ No images available!", ephemeral: true });
+            return interaction.reply({ content: "❌ No images available!", flags: 64});
         }
     
         const randomIndex = Math.floor(Math.random() * images[type][pose].length);
@@ -341,14 +341,14 @@ client.on("interactionCreate", async (interaction) => {
         if (!recipient) {
             return interaction.reply({
                 content: "❌ You must mention a user!",
-                ephemeral: true,
+                flags: 64,
             });
         }
     
         if (recipient.id === sender.id) {
             return interaction.reply({
                 content: "❌ You can't lick yourself!",
-                ephemeral: true,
+                flags: 64,
             });
         }
     
@@ -384,7 +384,7 @@ client.on("interactionCreate", async (interaction) => {
         if (!recipient) {
             return interaction.reply({
                 content: "❌ You must mention a user!",
-                ephemeral: true,
+                flags: 64,
             });
         }
     
@@ -479,7 +479,7 @@ client.on("interactionCreate", async (interaction) => {
     
         await interaction.reply({
             content: `✅ Your preference has been set to **${sex}**!`,
-            ephemeral: true,
+            flags: 64,
         });
     }    
 });
