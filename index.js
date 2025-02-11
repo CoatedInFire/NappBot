@@ -195,61 +195,153 @@ async function fetchE621Image(tags = []) {
 }
 
 // Global Variables to Store Stats (Initialize as needed)
-let totalCommandsGlobal = 0; // Initialize when your bot starts.
-const commandCountsGlobal = {}; // Initialize as an empty object.
-const userCommandCounts = {}; // Initialize as an empty object.
+let totalCommandsGlobal = 0;
+const commandCountsGlobal = {};
+const userCommandCounts = {};
 
 async function updateGlobalStats(commandName) {
-    totalCommandsGlobal++;
-    commandCountsGlobal[commandName] = (commandCountsGlobal[commandName] || 0) + 1;
+  try {
+    await pool.execute(
+      "UPDATE global_stats SET stat_value = stat_value + 1 WHERE stat_name = 'total_commands'",
+      []
+    );
+    if (!(await getGlobalStat("total_commands"))) {
+      await pool.execute(
+        "INSERT INTO global_stats (stat_name, stat_value) VALUES ('total_commands', 1)",
+        []
+      );
+    }
+
+    await pool.execute(
+      "INSERT INTO command_usage (command_name, count) VALUES (?, 1) ON DUPLICATE KEY UPDATE count = count + 1",
+      [commandName]
+    );
+  } catch (error) {
+    console.error("Error updating global stats:", error);
+  }
 }
 
 async function updateUserCommandCounts(userId, commandName) {
-    userCommandCounts[userId] = userCommandCounts[userId] || {};
-    userCommandCounts[userId][commandName] = (userCommandCounts[userId][commandName] || 0) + 1;
+  userCommandCounts[userId] = userCommandCounts[userId] || {};
+  userCommandCounts[userId][commandName] =
+    (userCommandCounts[userId][commandName] || 0) + 1;
 }
 
 // Functions for Global Stats, Top Users, and Most Used Commands
-function getTotalCommandsGlobal() {
-    return totalCommandsGlobal;
+async function getTotalCommandsGlobal() {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT stat_value FROM global_stats WHERE stat_name = 'total_commands'",
+      []
+    );
+    return rows[0]?.stat_value || 0;
+  } catch (error) {
+    console.error("Error getting global total commands:", error);
+    return 0;
+  }
 }
 
-function getTopUser() {
-    let topUser = null;
-    let maxCommands = 0;
+async function getTopUser() {
+  try {
+    const [rows] = await pool.execute(
+      `
+            SELECT user_id, SUM(count) AS total_commands
+            FROM command_usage
+            GROUP BY user_id
+            ORDER BY total_commands DESC
+            LIMIT 1
+        `,
+      []
+    );
+    return rows[0]?.user_id ? `<@${rows[0].user_id}>` : "No users yet";
+  } catch (error) {
+    console.error("Error getting top user:", error);
+    return "Error getting top user";
+  }
+}
 
-    for (const userId in userCommandCounts) {
-        let userTotal = 0;
-        for (const command in userCommandCounts[userId]) {
-            userTotal += userCommandCounts[userId][command];
-        }
-        if (userTotal > maxCommands) {
-            maxCommands = userTotal;
-            topUser = userId;
-        }
+async function getMostUsedCommand() {
+  try {
+    const [rows] = await pool.execute(
+      `
+            SELECT command_name
+            FROM command_usage
+            ORDER BY count DESC
+            LIMIT 1
+        `,
+      []
+    );
+    return rows[0]?.command_name || "No commands used yet";
+  } catch (error) {
+    console.error("Error getting most used command:", error);
+    return "Error getting most used command";
+  }
+}
+
+async function getMostUsedCommandCount() {
+  try {
+    const [rows] = await pool.execute(
+      `
+            SELECT count
+            FROM command_usage
+            ORDER BY count DESC
+            LIMIT 1
+        `,
+      []
+    );
+    return rows[0]?.count || 0;
+  } catch (error) {
+    console.error("Error getting most used command count:", error);
+    return "Error getting most used command count";
+  }
+}
+
+async function getGlobalStat(stat_name) {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT stat_value FROM global_stats WHERE stat_name = ?",
+      [stat_name]
+    );
+    return rows[0]?.stat_value || 0;
+  } catch (error) {
+    console.error("Error getting global stat:", error);
+    return 0;
+  }
+}
+
+client.once("ready", async () => {
+  // ... (Your existing ready event handler code)
+
+  try {
+    await createTable();
+
+    // Initialize global stats (if they don't exist)
+    await pool.execute(
+      "INSERT IGNORE INTO global_stats (stat_name, stat_value) VALUES ('total_commands', '0')",
+      []
+    );
+    // ... initialize other global stats as needed
+    const defaultCommands = [
+      "ping",
+      "hug",
+      "fuck",
+      "lick",
+      "kiss",
+      "e621",
+      "cmds",
+      "settings",
+      "setpreference",
+    ];
+    for (const cmd of defaultCommands) {
+      await pool.execute(
+        "INSERT IGNORE INTO command_usage (command_name, count) VALUES (?, 0)",
+        [cmd]
+      );
     }
-
-    return topUser ? `<@${topUser}>` : "No users yet"; // Return mention or message
-}
-
-function getMostUsedCommand() {
-    let mostUsedCommand = null;
-    let maxCount = 0;
-
-    for (const command in commandCountsGlobal) {
-        if (commandCountsGlobal[command] > maxCount) {
-            maxCount = commandCountsGlobal[command];
-            mostUsedCommand = command;
-        }
-    }
-
-    return mostUsedCommand || "No commands used yet";
-}
-
-function getMostUsedCommandCount() {
-    const mostUsedCommand = getMostUsedCommand();
-    return commandCountsGlobal[mostUsedCommand] || 0;
-}
+  } catch (error) {
+    console.error("Error initializing global stats:", error);
+  }
+});
 
 // Slash commands
 const commands = [
@@ -383,55 +475,53 @@ const commands = [
   },
 ];
 
-// client.on('interactionCreate', ...)
-client.on('interactionCreate', async (interaction) => {
+client.on("interactionCreate", async (interaction) => {
   if (!interaction.isCommand()) return;
 
   const userId = interaction.user.id;
   const commandName = interaction.commandName;
 
   try {
-      await pool.execute(
-          "UPDATE users SET total_commands = total_commands + 1 WHERE user_id = ?",
-          [userId]
-      );
+    await pool.execute(
+      "UPDATE users SET total_commands = total_commands + 1 WHERE user_id = ?",
+      [userId]
+    );
 
-      const [rows] = await pool.execute(
-          "SELECT command_counts FROM users WHERE user_id = ?",
-          [userId]
-      );
-      const commandCounts = rows[0]?.command_counts
-          ? JSON.parse(rows[0].command_counts)
-          : {};
-      commandCounts[commandName] = (commandCounts[commandName] || 0) + 1;
-      await pool.execute(
-          "UPDATE users SET command_counts = ? WHERE user_id = ?",
-          [JSON.stringify(commandCounts), userId]
-      );
+    const [rows] = await pool.execute(
+      "SELECT command_counts FROM users WHERE user_id = ?",
+      [userId]
+    );
+    const commandCounts = rows[0]?.command_counts
+      ? JSON.parse(rows[0].command_counts)
+      : {};
+    commandCounts[commandName] = (commandCounts[commandName] || 0) + 1;
+    await pool.execute(
+      "UPDATE users SET command_counts = ? WHERE user_id = ?",
+      [JSON.stringify(commandCounts), userId]
+    );
 
-      let favoriteCommand = null;
-      let maxCount = 0;
+    let favoriteCommand = null;
+    let maxCount = 0;
 
-      for (const cmd in commandCounts) {
-          if (commandCounts[cmd] > maxCount) {
-              maxCount = commandCounts[cmd];
-              favoriteCommand = cmd;
-          }
+    for (const cmd in commandCounts) {
+      if (commandCounts[cmd] > maxCount) {
+        maxCount = commandCounts[cmd];
+        favoriteCommand = cmd;
       }
+    }
 
-      if (favoriteCommand) {
-          await pool.execute(
-              "UPDATE users SET favorite_command = ? WHERE user_id = ?",
-              [favoriteCommand, userId]
-          );
-      }
+    if (favoriteCommand) {
+      await pool.execute(
+        "UPDATE users SET favorite_command = ? WHERE user_id = ?",
+        [favoriteCommand, userId]
+      );
+    }
 
-      // Update Global and User Command Counts (NEW!)
-      await updateGlobalStats(commandName);
-      await updateUserCommandCounts(userId, commandName);
-
+    // Update Global and User Command Counts
+    await updateGlobalStats(commandName);
+    await updateUserCommandCounts(userId, commandName);
   } catch (error) {
-      console.error("Error updating command usage or favorite command:", error);
+    console.error("Error updating command usage or favorite command:", error);
   }
 
   // Ping
