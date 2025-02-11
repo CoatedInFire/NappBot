@@ -992,7 +992,7 @@ client.on("interactionCreate", async (interaction) => {
               .setStyle(ButtonStyle.Primary)
           );
           
-          await interaction.reply({ embeds: [embed], components: [row] });
+          await interaction.editReply({ embeds: [embed], components: [row] });
           
       } catch (error) {
         console.error("❌ Error fetching settings:", error);
