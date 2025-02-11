@@ -1,14 +1,5 @@
 require("dotenv").config();
-const {
-    Client,
-    GatewayIntentBits,
-    REST,
-    Routes,
-    EmbedBuilder,
-    ActionRowBuilder,
-    ButtonBuilder,
-    ButtonStyle,
-} = require("discord.js");
+const { Client, GatewayIntentBits, REST, Routes, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
 
 let fs; // Declare fs outside the if block
 if (global.fsLoaded) {
