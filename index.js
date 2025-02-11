@@ -1011,83 +1011,55 @@ client.on("interactionCreate", async (interaction) => {
       });
     }
 
-    // Handle Modal Submissions
-    if (
-      interaction.isModalSubmit() &&
-      interaction.customId === "preference_modal"
-    ) {
-      const userId = interaction.user.id;
-      const sex = interaction.fields.getTextInputValue("sex_input") || "random";
-
-      try {
-        await setUserPreference(userId, sex);
-        await interaction.reply({
-          content: `✅ Preferences updated! Sex: ${sex}`,
-          ephemeral: true,
-        });
-      } catch (error) {
-        console.error("❌ Error updating preferences:", error);
-        await interaction.reply({
-          content: "⚠️ An error occurred while updating preferences.",
-          ephemeral: true,
-        });
-      }
-    }
-
     // Handle Button Interactions
-    if (interaction.isButton()) {
-      if (interaction.customId === "edit_preferences") {
-        const modal = new ModalBuilder()
-          .setCustomId("preference_modal")
-          .setTitle("Edit Preferences");
+if (interaction.isButton() && interaction.customId === "edit_preferences") {
+  const modal = new ModalBuilder()
+    .setCustomId("preference_modal")
+    .setTitle("Edit Preferences");
 
-        const sexInput = new TextInputBuilder()
-          .setCustomId("sex_input")
-          .setLabel("Preferred Sex (male, female, other)")
-          .setStyle(TextInputStyle.Short)
-          .setRequired(false);
+  const sexInput = new TextInputBuilder()
+    .setCustomId("sex_input")
+    .setLabel("Preferred Sex (male, female, other)")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(false);
 
-        const firstActionRow = new ActionRowBuilder().addComponents(sexInput);
-        modal.addComponents(firstActionRow);
+  const firstActionRow = new ActionRowBuilder().addComponents(sexInput);
+  modal.addComponents(firstActionRow);
 
-        await interaction.showModal(modal);
-      }
+  await interaction.showModal(modal);
+}
+
+// Handle Modal Submissions (Consolidated)
+if (interaction.isModalSubmit() && interaction.customId === "preference_modal") {
+  const userId = interaction.user.id;
+  const sex = interaction.fields.getTextInputValue("sex_input") || "random";
+
+  try {
+    await setUserPreference(userId, sex);
+
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply({
+        content: `✅ Preferences updated! Sex: ${sex}`,
+      });
+    } else {
+      await interaction.reply({
+        content: `✅ Preferences updated! Sex: ${sex}`,
+      });
     }
+  } catch (error) {
+    console.error("❌ Error updating preferences:", error);
 
-    // Handle Modal Submissions
-    if (interaction.isModalSubmit()) {
-      if (interaction.customId === "preference_modal") {
-        const userId = interaction.user.id;
-        const sex =
-          interaction.fields.getTextInputValue("sex_input") || "random";
-
-        try {
-          await setUserPreference(userId, sex);
-
-          if (interaction.replied || interaction.deferred) {
-            await interaction.editReply({
-              content: `✅ Preferences updated! Sex: ${sex}`,
-            });
-          } else {
-            await interaction.reply({
-              content: `✅ Preferences updated! Sex: ${sex}`,
-            });
-          }
-        } catch (error) {
-          console.error("❌ Error updating preferences:", error);
-
-          if (interaction.replied || interaction.deferred) {
-            await interaction.editReply({
-              content: "⚠️ An error occurred while updating preferences.",
-            });
-          } else {
-            await interaction.reply({
-              content: "⚠️ An error occurred while updating preferences.",
-            });
-          }
-        }
-      }
+    if (interaction.replied || interaction.deferred) {
+      await interaction.editReply({
+        content: "⚠️ An error occurred while updating preferences.",
+      });
+    } else {
+      await interaction.reply({
+        content: "⚠️ An error occurred while updating preferences.",
+      });
     }
+  }
+}
   } catch (error) {
     console.error("❌ Unexpected error handling interaction:", error);
   }
