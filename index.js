@@ -696,10 +696,17 @@ client.on("interactionCreate", async (interaction) => {
           [userId, preference]
         );
 
-        await interaction.reply({
-          content: `✅ Your preference has been set to **${preference}**!`,
-          ephemeral: true,
-        });
+        if (interaction.replied || interaction.deferred) {
+          await interaction.editReply({
+            content: `✅ Your preference has been updated to **${preference}**!`,
+            ephemeral: true,
+          });
+        } else {
+          await interaction.reply({
+            content: `✅ Your preference has been set to **${preference}**!`,
+            ephemeral: true,
+          });
+        }
       } catch (error) {
         console.error("❌ Error setting user preference:", error);
         await interaction.reply({
