@@ -115,28 +115,57 @@ async function createTable() {
 }
 
 async function getOrCreateUser(userId) {
-  let user = await getUserFromDatabase(userId); // Fetch user
+  try {
+    const [rows] = await pool.execute("SELECT * FROM users WHERE user_id = ?", [
+      userId,
+    ]);
 
-  if (!user) {
-    console.log(`User ${userId} not found in database. Adding user...`);
+    if (rows.length === 0) {
+      console.log(`User ${userId} not found, adding to database.`);
+      await addUserToDatabase(userId);
 
-    await addUserToDatabase(userId); // Insert new user
-    user = await getUserFromDatabase(userId); // Fetch again after insert
+      // Fetch again after inserting to ensure it's returned
+      const [newUser] = await pool.execute(
+        "SELECT * FROM users WHERE user_id = ?",
+        [userId]
+      );
+      return newUser[0]; // Return the newly created user
+    }
+
+    return rows[0]; // Return existing user
+  } catch (error) {
+    console.error(`❌ Error in getOrCreateUser for ${userId}:`, error);
+    return null;
   }
+}
 
-  return user;
+async function addUserToDatabase(userId) {
+  try {
+    await pool.execute(
+      "INSERT INTO users (user_id, sex, total_commands, favorite_command) VALUES (?, ?, ?, ?)",
+      [userId, "Random", 0, "None"]
+    );
+    console.log(`✅ User ${userId} added to database.`);
+  } catch (error) {
+    console.error("❌ Error adding user to database:", error);
+  }
 }
 
 async function setUserPreference(userId, sex) {
   try {
-    await pool.execute(
-      "INSERT INTO users (user_id, sex) VALUES (?, ?) ON DUPLICATE KEY UPDATE sex = ?",
-      [userId, sex, sex]
-    );
+    await getOrCreateUser(userId);
+
+    await pool.execute("UPDATE users SET sex = ? WHERE user_id = ?", [
+      sex,
+      userId,
+    ]);
+
+    console.log(`✅ User ${userId} preference updated to ${sex}.`);
   } catch (error) {
-    console.error("Error setting user preference:", error);
+    console.error("❌ Error setting user preference:", error);
   }
 }
+
 async function getTotalCommands(userId) {
   try {
     const [rows] = await pool.execute(
@@ -160,17 +189,6 @@ async function getFavoriteCommand(userId) {
   } catch (error) {
     console.error("Error getting favorite command:", error);
     return "None";
-  }
-}
-
-async function addUserToDatabase(userId) {
-  try {
-    await pool.execute(
-      "INSERT INTO users (user_id, sex, total_commands, favorite_command) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE user_id = user_id",
-      [userId, "Random", 0, "None"]
-    );
-  } catch (error) {
-    console.error("Error adding user to database:", error);
   }
 }
 
@@ -224,7 +242,7 @@ client.once("ready", async () => {
 // Fetch e621
 async function fetchE621Image(tags = []) {
   const query = tags.join("+");
-  const url = `https://e621.net/posts.json?tags=${query}&limit=100`; // Fetch up to 100 posts
+  const url = `https://e621.net/posts.json?tags=${query}&limit=100`;
   const apiKey = process.env.E621_API_KEY;
 
   try {
@@ -238,30 +256,32 @@ async function fetchE621Image(tags = []) {
       },
     });
 
+    if (!response.ok) {
+      throw new Error(`e621 API error: ${response.statusText}`);
+    }
+
     const data = await response.json();
     if (!data.posts || data.posts.length === 0) {
       return null;
     }
 
-    // Pick a random post from the available results
     const post = data.posts[Math.floor(Math.random() * data.posts.length)];
 
-    const artists =
-      post.tags.artist.length > 0 ? post.tags.artist.join(", ") : "Unknown";
-    const characters =
-      post.tags.character.slice(0, 3).join(", ") || "No characters tagged";
-    const score = post.score.total;
-    const favCount = post.fav_count;
-    const postId = post.id;
-    const postUrl = `https://e621.net/posts/${postId}`;
-    const imageUrl = post.file.url;
-
-    return { imageUrl, artists, characters, score, favCount, postId, postUrl };
+    return {
+      imageUrl: post.file?.url || "No image available",
+      artists: post.tags.artist.length > 0 ? post.tags.artist.join(", ") : "Unknown",
+      characters: post.tags.character.slice(0, 3).join(", ") || "No characters tagged",
+      score: post.score.total || 0,
+      favCount: post.fav_count || 0,
+      postId: post.id || "Unknown",
+      postUrl: `https://e621.net/posts/${post.id}`,
+    };
   } catch (error) {
-    console.error("Error fetching image from e621:", error.message);
+    console.error("❌ Error fetching image from e621:", error.message);
     return null;
   }
 }
+
 
 // Global Variables to Store Stats (Initialize as needed)
 let totalCommandsGlobal = 0;
@@ -270,26 +290,26 @@ const userCommandCounts = {};
 
 async function updateGlobalStats(commandName) {
   try {
-    // Update the total commands count
     await pool.execute(
       "UPDATE global_stats SET stat_value = stat_value + 1 WHERE stat_name = 'total_commands'"
     );
 
-    // Fetch existing command count
     const [rows] = await pool.execute(
       "SELECT count FROM command_usage WHERE command_name = ?",
       [commandName]
     );
+
     let count = rows.length > 0 && rows[0].count ? Number(rows[0].count) : 0;
-    // Insert or update command count properly
+
     await pool.execute(
-      "INSERT INTO command_usage (command_name, count) VALUES (?, ?) ON DUPLICATE KEY UPDATE count = ?",
-      [commandName, count + 1, count + 1]
+      "INSERT INTO command_usage (command_name, count) VALUES (?, ?) ON DUPLICATE KEY UPDATE count = count + 1",
+      [commandName, count + 1]
     );
   } catch (error) {
     console.error("❌ Error updating command usage:", error);
   }
 }
+
 
 async function updateUserCommandCounts(userId, commandName) {
   userCommandCounts[userId] = userCommandCounts[userId] || {};
@@ -371,21 +391,6 @@ async function getGlobalStat(stat_name) {
   } catch (error) {
     console.error("Error getting global stat:", error);
     return 0;
-  }
-}
-
-async function getOrCreateUser(userId) {
-  try {
-    const [rows] = await pool.execute(
-      "SELECT user_id FROM users WHERE user_id = ?",
-      [userId]
-    );
-    if (rows.length === 0) {
-      console.log(`User ${userId} not found, adding to database.`);
-      await addUserToDatabase(userId);
-    }
-  } catch (error) {
-    console.error(`Error in getOrCreateUser for ${userId}:`, error);
   }
 }
 
