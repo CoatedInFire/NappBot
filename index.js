@@ -210,9 +210,10 @@ client.once("ready", async () => {
   }
 });
 
+// Fetch e621
 async function fetchE621Image(tags = []) {
   const query = tags.join("+");
-  const url = `https://e621.net/posts.json?tags=${query}&limit=1`;
+  const url = `https://e621.net/posts.json?tags=${query}&limit=100`; // Fetch up to 100 posts
   const apiKey = process.env.E621_API_KEY;
 
   try {
@@ -231,7 +232,9 @@ async function fetchE621Image(tags = []) {
       return null;
     }
 
-    const post = data.posts[0];
+    // Pick a random post from the available results
+    const post = data.posts[Math.floor(Math.random() * data.posts.length)];
+
     const artists =
       post.tags.artist.length > 0 ? post.tags.artist.join(", ") : "Unknown";
     const characters =
@@ -953,47 +956,62 @@ client.on("interactionCreate", async (interaction) => {
             ? await getTotalCommands(topUser.replace(/\D/g, ""))
             : 0;
 
-            const embed = new EmbedBuilder()
-            .setColor(0x5865f2)
-            .setTitle("📊 User Settings & Bot Statistics")
-            .addFields(
-              { 
-                name: "⚙️ Your Stats", 
-                value: 
-                  `📌 **Total Commands Used:** ${totalCommands || 0}\n` +
-                  `⭐ **Favorite Command:** /${favoriteCommand || "None"}\n` +
-                  `💬 **Sex Preference:** ${sex}` 
-              },
-              { 
-                name: "🌍 Global Stats", 
-                value: `📌 **Total Commands Run:** ${globalCommands || 0}`
-              },
-              { 
-                name: "🏆 Top Users", 
-                value: `👑 **@${topUser}** - ${topUserTotalCommands || 0} commands`
-              },
-              { 
-                name: "🔥 Most Used Commands", 
-                value: `🔹 **/${mostUsedCommand || "None"}** - ${mostUsedCommandCount || 0} uses`
-              }
-            )
-            .setFooter({
-              text: `Requested by ${interaction.user.tag} • ${new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}`,
-              iconURL: interaction.user.displayAvatarURL(),
-            });
-          
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("edit_preferences")
-              .setLabel("⚙️ Change Preferences")
-              .setStyle(ButtonStyle.Primary)
-          );
-          
-          await interaction.editReply({ embeds: [embed], components: [row] });
-          
+        const embed = new EmbedBuilder()
+          .setColor(0x5865f2)
+          .setTitle("📊 User Settings & Bot Statistics")
+          .addFields(
+            {
+              name: "⚙️ Your Stats",
+              value: `📌 **Total Commands Used:** ${
+                totalCommands || 0
+              }\n⭐ **Favorite Command:** /${
+                favoriteCommand || "None"
+              }\n💬 **Sex Preference:** ${sex}`,
+              inline: true, // Aligns to the left
+            },
+            {
+              name: "🌍 Global Stats",
+              value: `📌 **Total Commands Run:** ${globalCommands || 0}`,
+              inline: true, // Moves it to the right
+            },
+            {
+              name: "\u200b", // Zero-width space to break row
+              value: "\u200b",
+              inline: false,
+            },
+            {
+              name: "🏆 Top Users",
+              value: `👑 **@${topUser}** - ${
+                topUserTotalCommands || 0
+              } commands`,
+              inline: true, // Aligns left (new row)
+            },
+            {
+              name: "🔥 Most Used Commands",
+              value: `🔹 **/${mostUsedCommand || "None"}** - ${
+                mostUsedCommandCount || 0
+              } uses`,
+              inline: true, // Aligns right (new row)
+            }
+          )
+          .setFooter({
+            text: `Requested by ${
+              interaction.user.tag
+            } • ${new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}`,
+            iconURL: interaction.user.displayAvatarURL(),
+          });
+
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setCustomId("edit_preferences")
+            .setLabel("⚙️ Change Preferences")
+            .setStyle(ButtonStyle.Primary)
+        );
+
+        await interaction.editReply({ embeds: [embed], components: [row] });
       } catch (error) {
         console.error("❌ Error fetching settings:", error);
         await interaction.editReply({
@@ -1052,6 +1070,7 @@ client.on("interactionCreate", async (interaction) => {
         } else {
           await interaction.reply({
             content: `✅ Preferences updated! Sex: ${sex}`,
+            ephemeral: true, // Makes the message visible only to the user
           });
         }
       } catch (error) {
@@ -1064,6 +1083,7 @@ client.on("interactionCreate", async (interaction) => {
         } else {
           await interaction.reply({
             content: "⚠️ An error occurred while updating preferences.",
+            ephemeral: true, // Ensure error message is also private
           });
         }
       }
