@@ -227,13 +227,23 @@ async function getFavoriteCommand(userId) {
 
 async function updateUserSettings(userId, newSex) {
   try {
-    await getOrCreateUser(userId); // Ensure user exists
+    console.log(`🔄 Ensuring user ${userId} exists before updating...`);
+    
+    // Ensure the user exists before updating
+    const user = await getOrCreateUser(userId);
+    if (!user) {
+      console.warn(`⚠️ User ${userId} could not be found or created.`);
+      return false;
+    }
 
-    console.log(`🔄 Updating user ${userId} settings...`);
+    console.log(`🔄 Updating user ${userId} in database...`);
+
     const [updateResult] = await pool.execute(
       "UPDATE users SET sex = ?, total_commands = total_commands + 1 WHERE user_id = ?",
       [newSex, userId]
     );
+
+    console.log(`📝 Update Result:`, updateResult);
 
     if (updateResult.affectedRows === 0) {
       console.warn(`⚠️ No rows updated. User ${userId} might not exist.`);
