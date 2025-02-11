@@ -5,7 +5,11 @@ const {
     REST,
     Routes,
     EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
 } = require("discord.js");
+
 
 const client = new Client({
     intents: [
@@ -349,41 +353,54 @@ client.on("interactionCreate", async (interaction) => {
     }
     // e621
     if (interaction.commandName === "e621") {
-        await interaction.deferReply(); // Prevents timeout issues
+        await interaction.deferReply(); // Defer to prevent timeout
     
         const tags = interaction.options.getString("tags")?.split(" ") || [];
-        const imageUrl = await fetchE621Image(tags);
+        const query = tags.join("+");
+        const url = `https://e621.net/posts.json?tags=${query}&limit=1`;
+        const apiKey = process.env.E621_API_KEY;
     
-        if (!imageUrl) {
-            return interaction.editReply("❌ No results found for those tags!");
+        try {
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    "User-Agent": "NappBot/1.0 (by Napp on e621)",
+                    "Authorization": `Basic ${Buffer.from(`Napp:${apiKey}`).toString("base64")}`,
+                },
+            });
+    
+            const data = await response.json();
+            if (!data.posts || data.posts.length === 0) {
+                return interaction.editReply({ content: "❌ No images found for these tags." });
+            }
+    
+            const post = data.posts[0];
+            const imageUrl = post.file.url;
+            const postId = post.id;
+            const postLink = `https://e621.net/posts/${postId}`;
+    
+            const embed = new EmbedBuilder()
+                .setTitle("🔍 e621 Search Result")
+                .setDescription(`Tags: \`${tags.join(", ") || "None"}\``)
+                .setImage(imageUrl)
+                .setColor("#0074D9")
+                .setFooter({ text: `Image ID: ${postId}` })
+                .setTimestamp();
+    
+            const button = new ButtonBuilder()
+                .setLabel("View on e621")
+                .setURL(postLink)
+                .setStyle(ButtonStyle.Link);
+    
+            const row = new ActionRowBuilder().addComponents(button);
+    
+            await interaction.editReply({ embeds: [embed], components: [row] });
+        } catch (error) {
+            console.error("Error fetching from e621:", error);
+            await interaction.editReply({ content: "❌ Failed to fetch image from e621." });
         }
-    
-        const embed = new EmbedBuilder()
-            .setTitle("🔞 e621 Image")
-            .setImage(imageUrl)
-            .setColor("#00549F")
-            .setFooter({ text: `Requested by ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-            .setTimestamp();
-        await interaction.editReply({ embeds: [embed] });
     }
-
-    // Commands
-    if (interaction.commandName === "cmds") {
-        const commands = await client.application.commands.fetch(); // Fetch all commands
-        if (!commands.size) {
-            return interaction.reply({ content: "❌ No commands found!", ephemeral: true });
-        }
-    
-        const commandList = commands.map(cmd => `\`/${cmd.name}\` - ${cmd.description}`).join("\n");
-    
-        const embed = new EmbedBuilder()
-            .setTitle("📜 Available Commands")
-            .setDescription(commandList)
-            .setColor("#FFA500")
-            .setTimestamp();
-    
-        await interaction.reply({ embeds: [embed] });
-    }
+}
     
 });
 
