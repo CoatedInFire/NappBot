@@ -73,7 +73,10 @@ if (dbUrl) {
   process.exit(1);
 }
 
-console.log(`🔍 Database Pool Status:`, pool ? "✅ Initialized" : "❌ Not Initialized");
+console.log(
+  `🔍 Database Pool Status:`,
+  pool ? "✅ Initialized" : "❌ Not Initialized"
+);
 
 // 2. Create Table (if it doesn't exist) - Moved INSIDE client.once('ready')
 async function createTable() {
@@ -119,13 +122,16 @@ async function createTable() {
 async function getOrCreateUser(userId) {
   try {
     console.log(`🔍 Checking if user ${userId} exists in database...`);
+
+    // Check if user already exists
     const [rows] = await pool.execute("SELECT * FROM users WHERE user_id = ?", [
       userId,
     ]);
 
     if (rows.length === 0) {
       console.log(`⚠️ User ${userId} not found, inserting into database...`);
-      
+
+      // Insert the new user
       const [insertResult] = await pool.execute(
         "INSERT INTO users (user_id, sex, total_commands, favorite_command) VALUES (?, ?, ?, ?)",
         [userId, "Random", 0, "None"]
@@ -133,8 +139,11 @@ async function getOrCreateUser(userId) {
 
       console.log(`✅ Insert Result:`, insertResult);
 
-      // Fetch again to confirm
-      const [newUser] = await pool.execute("SELECT * FROM users WHERE user_id = ?", [userId]);
+      // Fetch again to confirm insertion
+      const [newUser] = await pool.execute(
+        "SELECT * FROM users WHERE user_id = ?",
+        [userId]
+      );
 
       if (newUser.length === 0) {
         console.error(`❌ Insertion failed for user ${userId}.`);
@@ -142,11 +151,11 @@ async function getOrCreateUser(userId) {
       }
 
       console.log(`✅ User ${userId} successfully added.`);
-      return newUser[0]; 
+      return newUser[0];
     }
 
     console.log(`✅ User ${userId} already exists.`);
-    return rows[0]; 
+    return rows[0];
   } catch (error) {
     console.error(`❌ Error in getOrCreateUser for ${userId}:`, error);
     return null;
@@ -216,6 +225,30 @@ async function getFavoriteCommand(userId) {
   } catch (error) {
     console.error("Error getting favorite command:", error);
     return "None";
+  }
+}
+
+async function updateUserSettings(userId, newSex) {
+  try {
+    console.log(`🔄 Updating user ${userId}...`);
+
+    const [updateResult] = await pool.execute(
+      "UPDATE users SET sex = ?, total_commands = total_commands + 1 WHERE user_id = ?",
+      [newSex, userId]
+    );
+
+    console.log(`📝 Update Result:`, updateResult);
+
+    if (updateResult.affectedRows === 0) {
+      console.warn(`⚠️ No rows were updated. User ${userId} might not exist.`);
+      return false;
+    }
+
+    console.log(`✅ User ${userId} updated successfully.`);
+    return true;
+  } catch (error) {
+    console.error(`❌ Error updating user ${userId}:`, error);
+    return false;
   }
 }
 
@@ -342,27 +375,6 @@ async function updateUserCommandCounts(userId, commandName) {
   userCommandCounts[userId] = userCommandCounts[userId] || {};
   userCommandCounts[userId][commandName] =
     (userCommandCounts[userId][commandName] || 0) + 1;
-}
-
-async function updateUserSettings(userId, newSettings) {
-  try {
-    // Make sure user exists
-    const user = await getOrCreateUser(userId);
-    if (!user) {
-      console.error(`❌ Could not find or create user ${userId}!`);
-      return;
-    }
-
-    // Now update the settings
-    await pool.execute(
-      "UPDATE users SET some_setting_column = ? WHERE user_id = ?",
-      [newSettings, userId]
-    );
-
-    console.log(`✅ Updated settings for User ID: ${userId}`);
-  } catch (error) {
-    console.error("❌ Error updating user settings:", error);
-  }
 }
 
 async function getTotalCommandsGlobal() {
@@ -1018,12 +1030,20 @@ client.on("interactionCreate", async (interaction) => {
         const userId = interaction.user.id;
 
         // Fetch user, creating if necessary
-        await getOrCreateUser(userId);
+        const user = await getOrCreateUser(userId);
 
-        // Fetch user stats
-        const sex = (await getUserPreference(userId)) || "Random";
-        const totalCommands = (await getTotalCommands(userId)) || 0;
-        const favoriteCommand = (await getFavoriteCommand(userId)) || "None";
+        if (!user) {
+          return interaction.editReply({
+            content: "❌ Failed to fetch user data.",
+          });
+        }
+
+        // Get user data from database
+        const sex = user.sex || "Random"; // Fetch directly instead of getUserPreference
+        const totalCommands = user.total_commands || 0;
+        const favoriteCommand = user.favorite_command || "None";
+
+        // Fetch global stats
         const globalCommands = (await getTotalCommandsGlobal()) || 0;
         const mostUsedCommand = (await getMostUsedCommand()) || "None";
         const mostUsedCommandCount = (await getMostUsedCommandCount()) || 0;
@@ -1097,7 +1117,6 @@ client.on("interactionCreate", async (interaction) => {
         });
       }
     }
-
     // Set Preference Command
     if (interaction.commandName === "setpreference") {
       const sender = interaction.user;
