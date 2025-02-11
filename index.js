@@ -617,14 +617,26 @@ client.on("interactionCreate", async (interaction) => {
   if (interaction.commandName === "fuck") {
     const sender = interaction.user;
     const recipient = interaction.options.getUser("user");
+
+    if (!recipient) {
+      return interaction.reply({
+        content: "❌ You must mention someone!",
+        ephemeral: true,
+      });
+    }
+
     let pose = interaction.options.getString("pose");
-    let type =
-      interaction.options.getString("sex") || getUserPreference(recipient.id);
+    let type = interaction.options.getString("sex");
+
+    if (!type) {
+      const preference = getUserPreference(recipient.id);
+      type = typeof preference === "string" ? preference : "male"; // Default to male
+    }
 
     if (recipient.id === sender.id) {
       return interaction.reply({
         content: "❌ You can't do this to yourself...",
-        flags: 64,
+        ephemeral: true,
       });
     }
 
@@ -702,15 +714,19 @@ client.on("interactionCreate", async (interaction) => {
       },
     };
 
-    if (!type) {
-      type = Math.random() < 0.5 ? "female" : "male";
+    if (!images[type]) {
+      console.error(`❌ Invalid type: ${type}`);
+      return interaction.reply({
+        content: "❌ Invalid type selection!",
+        ephemeral: true,
+      });
     }
 
     if (!images[type][pose]) {
       console.error(`❌ No images found for pose: ${pose} and type: ${type}`);
       return interaction.reply({
-        content: "❌ No images available!",
-        flags: 64,
+        content: "❌ No images available for this pose!",
+        ephemeral: true,
       });
     }
 
