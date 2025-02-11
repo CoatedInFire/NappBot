@@ -18,11 +18,74 @@ const {
 } = require("discord.js");
 const fetch = require("node-fetch");
 const express = require("express");
-
+const mysql = require("mysql2/promise");
 const app = express();
+const { parse } = require("url");
 
-const token = process.env.TOKEN;
-const clientId = process.env.CLIENT_ID;
+const dbUrl = process.env.MYSQL_PUBLIC_URL;
+const { hostname, pathname, auth, port: dbPort } = new URL(dbUrl); // Renamed `port` to `dbPort`
+const [user, password] = auth.split(":");
+
+const database = mysql.createPool({
+    host: hostname,
+    port: dbPort,  // Use `dbPort` instead of `port`
+    user: user,
+    password: password,
+    database: pathname.substring(1), // Remove leading '/'
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+});
+
+// Create the table if it doesn't exist
+async function setupDatabase() {
+    try {
+        await database.execute(`
+            CREATE TABLE IF NOT EXISTS user_preferences (
+                user_id VARCHAR(50) PRIMARY KEY,
+                preference ENUM('male', 'female', 'random') DEFAULT 'random'
+            )
+        `);
+        console.log("✅ MySQL Table 'user_preferences' is ready!");
+    } catch (error) {
+        console.error("❌ Error creating MySQL table:", error);
+    }
+}
+
+// Run the setup function
+setupDatabase();
+
+module.exports = database;
+
+// MySQL Functions
+async function getUserPreference(userId) {
+  try {
+    const query = `SELECT preference FROM user_preferences WHERE user_id = ?`;
+    const [rows] = await database.execute(query, [userId]);
+
+    return rows.length > 0 ? rows[0].preference : "random"; // Default to random
+  } catch (error) {
+    console.error("MySQL Error (getUserPreference):", error);
+    return "random";
+  }
+}
+
+async function setUserPreference(userId, preference) {
+  if (!["male", "female", "random"].includes(preference)) return false;
+
+  try {
+    const query = `
+          INSERT INTO user_preferences (user_id, preference) 
+          VALUES (?, ?) 
+          ON DUPLICATE KEY UPDATE preference = VALUES(preference);
+      `;
+    await database.execute(query, [userId, preference]);
+    return true;
+  } catch (error) {
+    console.error("MySQL Error (setUserPreference):", error);
+    return false;
+  }
+}
 
 // Fetch e621
 async function fetchE621Image(tags = []) {
@@ -229,15 +292,6 @@ client.on("interactionCreate", async (interaction) => {
         });
       }
 
-      let pose = interaction.options.getString("pose");
-      let type = interaction.options.getString("sex");
-
-      // If type is not provided, randomly select between "male" and "female"
-      if (!type) {
-        const types = ["male", "female"];
-        type = types[Math.floor(Math.random() * types.length)];
-      }
-
       if (recipient.id === sender.id) {
         return interaction.reply({
           content: "❌ You can't do this to yourself...",
@@ -245,6 +299,16 @@ client.on("interactionCreate", async (interaction) => {
         });
       }
 
+      // Fetch user preference for recipient
+      let type = await getUserPreference(recipient.id);
+
+      // If no preference is set, pick randomly
+      if (!type || !["male", "female"].includes(type)) {
+        const options = ["male", "female"];
+        type = options[Math.floor(Math.random() * options.length)];
+      }
+
+      let pose = interaction.options.getString("pose");
       const poseOptions = ["behind", "front"];
       if (!pose) {
         pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
@@ -319,36 +383,27 @@ client.on("interactionCreate", async (interaction) => {
         },
       };
 
-      if (!images[type]) {
-        console.error(`❌ Invalid type: ${type}`);
+      if (!images[type] || !images[type][pose]) {
+        console.error(`❌ Invalid type or pose: ${type}, ${pose}`);
         return interaction.reply({
-          content: "❌ Invalid type selection!",
+          content: "❌ Invalid selection!",
           ephemeral: true,
         });
       }
-    
-      if (!images[type][pose]) {
-        console.error(`❌ No images found for pose: ${pose} and type: ${type}`);
-        return interaction.reply({
-          content: "❌ No images available for this pose!",
-          ephemeral: true,
-        });
-      }
-    
+
       const randomIndex = Math.floor(Math.random() * images[type][pose].length);
-      console.log(`Selected GIF Index for ${type}/${pose}: ${randomIndex}`);
       const image = images[type][pose][randomIndex];
-    
+
       const embed = new EmbedBuilder()
         .setTitle("🔥 Steamy Interaction!")
         .setDescription(`${sender} is having fun with ${recipient}! 😏`)
         .setImage(image)
         .setColor("#FF007F")
         .setTimestamp();
-    
+
       await interaction.reply({ embeds: [embed] });
     }
-    
+
     // Ping Command
     if (interaction.commandName === "ping") {
       await interaction.reply({
@@ -517,7 +572,6 @@ client.on("interactionCreate", async (interaction) => {
         .setDescription(
           `**Artist(s):** ${postData.artists}\n**Characters:** ${postData.characters}`
         )
-        .setImage(postData.imageUrl || "https://e621.net/static/logo.png")
         .setColor("#00549F")
         .setFooter({
           text: `⭐ Score: ${postData.score} | ❤️ Favorites: ${postData.favCount} | 📌 Post ID: ${postData.postId}\nRequested by ${sender.tag}`,
@@ -531,9 +585,67 @@ client.on("interactionCreate", async (interaction) => {
           .setURL(postData.postUrl)
       );
 
-      await interaction.editReply({ embeds: [embed], components: [row] });
+      // Check if the media is a .webm
+      if (postData.imageUrl.endsWith(".webm")) {
+        await interaction.editReply({
+          content: `🎥 **WebM File:** [Click here to view](${postData.imageUrl})`,
+          embeds: [embed],
+          components: [row],
+        });
+      } else {
+        embed.setImage(postData.imageUrl || "https://e621.net/static/logo.png");
+        await interaction.editReply({ embeds: [embed], components: [row] });
+      }
     }
 
+    // Settings
+    if (interaction.commandName === "settings") {
+      const userId = interaction.user.id;
+
+      // Fetch user preference
+      const [rows] = await database.execute(
+        "SELECT preference FROM user_preferences WHERE user_id = ?",
+        [userId]
+      );
+
+      const preference = rows.length > 0 ? rows[0].preference : "random"; // Default to random
+
+      const embed = new EmbedBuilder()
+        .setTitle("⚙️ Your Settings")
+        .setDescription(`**Sex Preference:** ${preference}`)
+        .setColor("#3498db")
+        .setFooter({
+          text: `Requested by ${interaction.user.tag}`,
+          iconURL: interaction.user.displayAvatarURL(),
+        })
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+    }
+
+    // Set Preference
+    if (interaction.commandName === "setpreference") {
+      const userId = interaction.user.id;
+      const preference = interaction.options.getString("sex");
+
+      if (!["male", "female"].includes(preference)) {
+        return interaction.reply({
+          content: "❌ Invalid preference!",
+          ephemeral: true,
+        });
+      }
+
+      // Insert or update the user preference
+      await database.execute(
+        "INSERT INTO user_preferences (user_id, preference) VALUES (?, ?) ON DUPLICATE KEY UPDATE preference = VALUES(preference)",
+        [userId, preference]
+      );
+
+      await interaction.reply({
+        content: `✅ Your preference has been set to **${preference}**!`,
+        ephemeral: true,
+      });
+    }
     // Commands List
     if (interaction.commandName === "cmds") {
       const commands = await client.application.commands.fetch();
@@ -577,6 +689,8 @@ client.login(token);
 app.get("/", (req, res) => {
   res.send("Bot is alive!");
 });
+
+database.query("SELECT 1").then(() => console.log("✅ Connected to MySQL!"));
 
 // Hosting Service that requires a Web Server (Replit, Heroku)
 const port = process.env.PORT || 3000;
