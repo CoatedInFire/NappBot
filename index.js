@@ -232,9 +232,10 @@ client.on("interactionCreate", async (interaction) => {
       let pose = interaction.options.getString("pose");
       let type = interaction.options.getString("sex");
 
+      // If type is not provided, randomly select between "male" and "female"
       if (!type) {
-        const preference = await getUserPreference(recipient.id);
-        type = typeof preference === "string" ? preference : "male"; // Default to male
+        const types = ["male", "female"];
+        type = types[Math.floor(Math.random() * types.length)];
       }
 
       if (recipient.id === sender.id) {
@@ -325,7 +326,7 @@ client.on("interactionCreate", async (interaction) => {
           ephemeral: true,
         });
       }
-
+    
       if (!images[type][pose]) {
         console.error(`❌ No images found for pose: ${pose} and type: ${type}`);
         return interaction.reply({
@@ -333,18 +334,18 @@ client.on("interactionCreate", async (interaction) => {
           ephemeral: true,
         });
       }
-
+    
       const randomIndex = Math.floor(Math.random() * images[type][pose].length);
       console.log(`Selected GIF Index for ${type}/${pose}: ${randomIndex}`);
       const image = images[type][pose][randomIndex];
-
+    
       const embed = new EmbedBuilder()
         .setTitle("🔥 Steamy Interaction!")
         .setDescription(`${sender} is having fun with ${recipient}! 😏`)
         .setImage(image)
         .setColor("#FF007F")
         .setTimestamp();
-
+    
       await interaction.reply({ embeds: [embed] });
     }
     
