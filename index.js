@@ -568,7 +568,6 @@ client.on("interactionCreate", async (interaction) => {
   } catch (error) {
     console.error("Error updating command usage:", error);
   }
-});
 
 // Ping
 if (interaction.commandName === "ping") {
