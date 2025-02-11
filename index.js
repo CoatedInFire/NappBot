@@ -72,6 +72,25 @@ try {
   process.exit(1);
 }
 
+// Ensure the user_preferences table exists
+async function ensureTableExists() {
+  try {
+    await databasePool.execute(`
+      CREATE TABLE IF NOT EXISTS user_preferences (
+        user_id VARCHAR(50) PRIMARY KEY,
+        preference ENUM('male', 'female', 'random') NOT NULL DEFAULT 'random'
+      );
+    `);
+    console.log("✅ Ensured 'user_preferences' table exists!");
+  } catch (error) {
+    console.error("❌ Error ensuring table exists:", error);
+    process.exit(1);
+  }
+}
+
+// Call function after DB connection
+ensureTableExists();
+
 // Test MySQL connection
 databasePool
   .query("SELECT 1")
