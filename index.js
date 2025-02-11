@@ -65,23 +65,44 @@ if (dbUrl) {
 // 2. Create Table (if it doesn't exist) - Moved INSIDE client.once('ready')
 async function createTable() {
   try {
-    const connection = await pool.getConnection();
-    await connection.execute(`
-            CREATE TABLE IF NOT EXISTS users (
-                user_id VARCHAR(255) PRIMARY KEY,
-                sex VARCHAR(255) DEFAULT 'random',
-                total_commands INT DEFAULT 0,
-                favorite_command VARCHAR(255),
-                command_counts JSON
-            )
-        `);
-    console.log("Users table created (or already exists).");
-    connection.release();
+      const connection = await pool.getConnection();
+
+      // Create users table (existing code)
+      await connection.execute(`
+          CREATE TABLE IF NOT EXISTS users (
+              user_id VARCHAR(255) PRIMARY KEY,
+              sex VARCHAR(255) DEFAULT 'random',
+              total_commands INT DEFAULT 0,
+              favorite_command VARCHAR(255),
+              command_counts JSON
+          )
+      `);
+      console.log("Users table created (or already exists).");
+
+      // Create global_stats table
+      await connection.execute(`
+          CREATE TABLE IF NOT EXISTS global_stats (
+              stat_name VARCHAR(255) PRIMARY KEY,
+              stat_value VARCHAR(255)
+          )
+      `);
+      console.log("global_stats table created (or already exists).");
+
+      // Create command_usage table
+      await connection.execute(`
+          CREATE TABLE IF NOT EXISTS command_usage (
+              command_name VARCHAR(255),
+              count INT DEFAULT 0,
+              PRIMARY KEY (command_name)
+          )
+      `);
+      console.log("command_usage table created (or already exists).");
+
+      connection.release();
   } catch (error) {
-    console.error("Error creating table:", error);
+      console.error("Error creating tables:", error);
   }
 }
-
 // 3. Replace file-based functions with MySQL functions
 async function getUserPreference(userId) {
   try {
@@ -135,15 +156,20 @@ async function getFavoriteCommand(userId) {
 const token = process.env.TOKEN;
 const clientId = process.env.CLIENT_ID;
 
-client.once("ready", async () => {
+client.once('ready', async () => {
   console.log(`✅ Logged in as ${client.user.tag}!`);
 
-  // Call createTable() HERE, after the bot is ready
-  try {
-    await createTable();
-  } catch (error) {
-    console.error("Error creating table:", error);
+  if (!pool) { // Check if the pool exists (connection established)
+      console.error("❌ Database connection pool is not initialized!");
+      return; // Or throw an error to stop the bot startup
   }
+
+  try {
+      await createTable();
+  } catch (error) {
+      console.error("Error creating table:", error);
+  }
+
 
   const rest = new REST({ version: "10" }).setToken(token);
   try {
