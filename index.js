@@ -934,7 +934,7 @@ client.on("interactionCreate", async (interaction) => {
     }
     // Settings Command
     if (interaction.commandName === "settings") {
-      await interaction.deferReply({ ephemeral: true });
+      await interaction.deferReply();
 
       try {
         const userId = interaction.user.id;
@@ -1063,16 +1063,28 @@ client.on("interactionCreate", async (interaction) => {
 
         try {
           await setUserPreference(userId, sex);
-          await interaction.reply({
-            content: `✅ Preferences updated! Sex: ${sex}`,
-            flags: [MessageFlags.Ephemeral],
-          });
+
+          if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({
+              content: `✅ Preferences updated! Sex: ${sex}`,
+            });
+          } else {
+            await interaction.reply({
+              content: `✅ Preferences updated! Sex: ${sex}`,
+            });
+          }
         } catch (error) {
           console.error("❌ Error updating preferences:", error);
-          await interaction.reply({
-            content: "⚠️ An error occurred while updating preferences.",
-            flags: [MessageFlags.Ephemeral],
-          });
+
+          if (interaction.replied || interaction.deferred) {
+            await interaction.editReply({
+              content: "⚠️ An error occurred while updating preferences.",
+            });
+          } else {
+            await interaction.reply({
+              content: "⚠️ An error occurred while updating preferences.",
+            });
+          }
         }
       }
     }
