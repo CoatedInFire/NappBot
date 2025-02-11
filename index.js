@@ -735,7 +735,7 @@ app.get("/", (req, res) => {
   res.send("Bot is alive!");
 });
 
-database.query("SELECT 1").then(() => console.log("✅ Connected to MySQL!"));
+databasePool.query("SELECT 1").then(() => console.log("✅ Connected to MySQL!"));
 
 // Hosting Service that requires a Web Server (Replit, Heroku)
 const port = process.env.PORT || 3000;
