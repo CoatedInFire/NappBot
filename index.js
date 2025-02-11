@@ -514,10 +514,18 @@ client.on("interactionCreate", async (interaction) => {
       [userId]
     );
 
-    const totalCommands = userRows[0]?.total_commands || 0;
-    const commandCounts = userRows[0]?.command_counts
-      ? JSON.parse(userRows[0].command_counts)
-      : {};
+    if (userRows.length === 0) {
+      console.error(`User ${userId} not found in database.`);
+      return;
+    }
+
+    const totalCommands = userRows[0].total_commands || 0;
+
+    const rawCommandCounts = userRows[0]?.command_counts;
+    const commandCounts =
+      typeof rawCommandCounts === "string"
+        ? JSON.parse(rawCommandCounts)
+        : rawCommandCounts || {};
 
     // Update command-specific counts
     commandCounts[commandName] = (commandCounts[commandName] || 0) + 1;
@@ -547,6 +555,8 @@ client.on("interactionCreate", async (interaction) => {
   } catch (error) {
     console.error("Error updating command usage:", error);
   }
+
+  console.log("Raw database response:", userRows);
 
   // Ping
   if (interaction.commandName === "ping") {
