@@ -347,6 +347,7 @@ client.on("interactionCreate", async (interaction) => {
 
       await interaction.reply({ embeds: [embed] });
     }
+    
     // Ping Command
     if (interaction.commandName === "ping") {
       await interaction.reply({
