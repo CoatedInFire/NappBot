@@ -247,7 +247,25 @@ const commands = [
     {
         name: "settings",
         description: "View your preferences and usage statistics.",
-    }
+    },
+
+    // Set Preferences
+    {
+        name: "setpreference",
+        description: "Set your preferred sex for the /fuck command.",
+        options: [
+            {
+                name: "sex",
+                type: 3, // STRING
+                description: "Choose your preference",
+                required: true,
+                choices: [
+                    { name: "Female", value: "female" },
+                    { name: "Male", value: "male" },
+                ],
+            },
+        ],
+    },
     
 ];
 
@@ -511,104 +529,47 @@ client.on("interactionCreate", async (interaction) => {
     }
     // Settings  
     if (interaction.commandName === "settings") {
-        const sender = interaction.user;
-        const userId = sender.id;
-
-        console.log("Debug: profiles =", profiles);
-        console.log("Debug: profiles.users =", profiles.users);
-        console.log(`Debug: profiles.users[${userId}] =`, profiles.users[userId]);
-
-        if (!profiles.users) profiles.users = {};
-        if (!profiles.users[userId]) {
-            return interaction.reply({ content: "❌ No data found for you yet!", ephemeral: true });
+        const userId = interaction.user.id;
+        let profiles = {};
+        
+        try {
+            profiles = JSON.parse(fs.readFileSync('profiles.json', 'utf8'));
+        } catch (err) {
+            console.error("Could not load profiles.json, creating a new one.");
         }
 
-        const userStats = profiles.users[userId].usage;
-        const favoriteCommand = userStats.favorite_command || "None yet";
-        const totalCommands = userStats.total_commands;
-        const sexPreference = profiles.users[userId].sex || "random";
+        const userSettings = profiles.users && profiles.users[userId] ? profiles.users[userId] : null;
 
-        // Server-wide statistics
-        const globalStats = profiles.server_stats;
-        const serverTotalCommands = globalStats.total_commands || 0;
+        if (!userSettings) {
+            return interaction.reply({ content: "You have no settings saved yet. Use `/setpreference` to set one.", ephemeral: true });
+        }
 
-        // Find top 3 users
-        const topUsersSorted = Object.entries(globalStats.top_users)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([id, count]) => `<@${id}> - **${count} commands**`);
+        const embed = {
+            color: 0x7289DA, // Discord blue
+            title: "Your Settings",
+            fields: [
+                { name: "Preferred Sex", value: userSettings.sex || "Random", inline: true },
+                { name: "Total Commands Used", value: userSettings.usage.total_commands.toString(), inline: true },
+                { name: "Favorite Command", value: userSettings.usage.favorite_command || "None", inline: true },
+            ],
+            footer: { text: "Use /setpreference to change your preferred setting." }
+        };
 
-        // Find top 3 commands
-        const topCommandsSorted = Object.entries(globalStats.top_commands)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3)
-            .map(([cmd, count]) => `\`${cmd}\` - **${count} uses**`);
-
-        // Create embed
-        const embed = new EmbedBuilder()
-            .setTitle("⚙️ User Settings & Bot Statistics")
-            .setColor("#00ADEF")
-            .addFields(
-                { name: "👤 **Your Stats**", value: `**Total Commands Used:** ${totalCommands}\n**Favorite Command:** ${favoriteCommand}\n**Sex Preference:** ${sexPreference}`, inline: true },
-                { name: "🌍 **Global Stats**", value: `**Total Commands Run:** ${serverTotalCommands}`, inline: true },
-                { name: "🏆 **Top Users**", value: topUsersSorted.length ? topUsersSorted.join("\n") : "No data yet.", inline: false },
-                { name: "📊 **Most Used Commands**", value: topCommandsSorted.length ? topCommandsSorted.join("\n") : "No data yet.", inline: false }
-            )
-            .setTimestamp()
-            .setFooter({ text: `Requested by ${sender.tag}`, iconURL: sender.displayAvatarURL() });
-
-        // Create action row with a button
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId("change_preference")
-                .setLabel("Change Preferences")
-                .setStyle(ButtonStyle.Primary)
-        );
-
-        await interaction.reply({ embeds: [embed], components: [row] });
+        interaction.reply({ embeds: [embed], ephemeral: true });
     }
-    if (interaction.isButton()) {
-        if (interaction.customId === "change_preference") {
-            const userId = interaction.user.id;
-
-            // Create buttons for changing preference
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId("set_preference_male")
-                    .setLabel("Male")
-                    .setStyle(ButtonStyle.Success),
-                new ButtonBuilder()
-                    .setCustomId("set_preference_female")
-                    .setLabel("Female")
-                    .setStyle(ButtonStyle.Danger),
-                new ButtonBuilder()
-                    .setCustomId("set_preference_random")
-                    .setLabel("Random")
-                    .setStyle(ButtonStyle.Secondary)
-            );
-
-            await interaction.reply({
-                content: "Select your new preference:",
-                components: [row],
-                ephemeral: true
-            });
-        }
-
-        // Handle preference selection
-        if (interaction.customId.startsWith("set_preference_")) {
-            const newPreference = interaction.customId.replace("set_preference_", "");
-            if (!profiles.users) profiles.users = {};
-            if (!profiles.users[interaction.user.id]) profiles.users[interaction.user.id] = { sex: "random", usage: { total_commands: 0, favorite_command: null, command_counts: {} } };
-            profiles.users[interaction.user.id].sex = newPreference;
-
-            fs.writeFileSync("profiles.json", JSON.stringify(profiles, null, 2));
-
-            await interaction.update({
-                content: `✅ Your preference has been updated to **${newPreference}**!`,
-                components: []
-            });
-        }
-    } 
+    if (interaction.commandName === "setpreference") {
+        const sender = interaction.user;
+        const sex = interaction.options.getString("sex");
+    
+        // Save the preference
+        setUserPreference(sender.id, sex);
+    
+        await interaction.reply({
+            content: `✅ Your preference has been set to **${sex}**!`,
+            ephemeral: true,
+        });
+    }
+    
 });
 
 client.once("ready", async () => {
