@@ -17,6 +17,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
   MessageFlags,
+  ModalBuilder,
 } = require("discord.js");
 const mysql = require("mysql2/promise");
 const fetch = require("node-fetch");
@@ -950,48 +951,33 @@ client.on("interactionCreate", async (interaction) => {
             ? await getTotalCommands(topUser.replace(/\D/g, ""))
             : 0;
 
-        // **Enhanced Embed Formatting**
+        // **Optimized Embed for Compact Display**
         const embed = new EmbedBuilder()
           .setColor(0x5865f2)
           .setTitle("📊 User Settings & Bot Statistics")
-          .setDescription("Here are your current stats!")
           .addFields(
-            { name: "👤 **Your Stats**", value: "\u200b" },
             {
-              name: "📌 Total Commands Used",
-              value: `**${totalCommands}**`,
-              inline: true,
+              name: "👤 Your Stats | 🌍 Global Stats",
+              value:
+                `📌 **Total Commands Used:** ${totalCommands || 0} | **${
+                  globalCommands || 0
+                }**\n` +
+                `⭐ **Favorite Command:** /${favoriteCommand || "None"}\n` +
+                `💬 **Sex Preference:** ${sex}`,
             },
             {
-              name: "⭐ Favorite Command",
-              value: `**/${favoriteCommand}**`,
-              inline: true,
-            },
-            { name: "💬 Sex Preference", value: `**${sex}**`, inline: true },
-            { name: "\u200b", value: "\u200b", inline: false },
-            { name: "🌍 **Global Stats**", value: "\u200b" },
-            {
-              name: "📊 Total Commands Run",
-              value: `**${globalCommands}**`,
-              inline: true,
-            },
-            { name: "\u200b", value: "\u200b", inline: true },
-            {
-              name: "🏆 **Top Users**",
-              value: `👑 @${topUser} - **${topUserTotalCommands}** commands`,
-              inline: true,
-            },
-            { name: "\u200b", value: "\u200b", inline: false },
-            {
-              name: "🔥 **Most Used Command**",
-              value: `🔹 /${mostUsedCommand} - **${mostUsedCommandCount}** uses`,
-              inline: true,
+              name: "🏆 Top User | 🔥 Most Used Command",
+              value:
+                `👑 **@${topUser}** - ${topUserTotalCommands || 0} commands\n` +
+                `🔹 **/${mostUsedCommand || "None"}** - ${
+                  mostUsedCommandCount || 0
+                } uses`,
             }
           )
           .setFooter({
             text: `Requested by ${
               interaction.user.tag
-            } • Today at ${new Date().toLocaleTimeString([], {
+            } • ${new Date().toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
             })}`,
@@ -1005,7 +991,7 @@ client.on("interactionCreate", async (interaction) => {
             .setStyle(ButtonStyle.Primary)
         );
 
-        await interaction.editReply({ embeds: [embed], components: [row] });
+        await interaction.reply({ embeds: [embed], components: [row] });
       } catch (error) {
         console.error("❌ Error fetching settings:", error);
         await interaction.editReply({
@@ -1101,6 +1087,7 @@ app.get("/", (req, res) => {
   res.send("Bot is alive!");
 });
 
+// Hosting Service that requires a Web Server (Replit, Heroku)
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`✅ Bot is running 24/7 on port ${port}`);
