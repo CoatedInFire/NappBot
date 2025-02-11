@@ -59,8 +59,8 @@ const commands = [
                 description: "Choose a pose",
                 required: false,
                 choices: [
-                    { name: "placeholder1", value: "placeholder1" },
-                    { name: "placeholder2", value: "placeholder2" },
+                    { name: "Doggystyle", value: "doggy" },
+                    { name: "Cowgirl", value: "cowgirl" },
                     { name: "placeholder3", value: "placeholder3" },
                     { name: "placeholder4", value: "placeholder4" },
                 ],
@@ -185,20 +185,20 @@ client.on("interactionCreate", async (interaction) => {
             });
         }
     
-        const poseOptions = ["placeholder1", "placeholder2", "placeholder3", "placeholder4"];
+        const poseOptions = ["doggy", "placeholder2", "placeholder3", "placeholder4"];
         if (!pose) {
             pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
         }
     
         const images = {
             vaginal: {
-                placeholder1: ["vaginal1_1", "vaginal1_2", "vaginal1_3"],
-                placeholder2: ["vaginal2_1", "vaginal2_2", "vaginal2_3"],
-                placeholder3: ["vaginal3_1", "vaginal3_2", "vaginal3_3"],
+                doggy: ["https://static1.e621.net/data/e1/a1/e1a1be581602c5171be271c9a970c78d.gif", "https://static1.e621.net/data/1f/e1/1fe11f06141f5bcdc002a90ff4c3d80f.gif", "https://static1.e621.net/data/d7/b4/d7b42c559f7505d66bc69c4714a354e5.gif"],
+                cowgirl: ["https://static1.e621.net/data/c5/30/c5305191eb41530fd8d3527a969527b3.gif", "vaginal2_2", "vaginal2_3"],
+                placeholder3: ["https://static1.e621.net/data/2f/26/2f26fa4a23068a99e9ec9c2d1ed9a8e0.gif", "vaginal3_2", "vaginal3_3"],
                 placeholder4: ["vaginal4_1", "vaginal4_2", "vaginal4_3"],
             },
             anal: {
-                placeholder1: ["anal1_1", "anal1_2", "anal1_3"],
+                doggy: ["anal1_1", "anal1_2", "anal1_3"],
                 placeholder2: ["anal2_1", "anal2_2", "anal2_3"],
                 placeholder3: ["anal3_1", "anal3_2", "anal3_3"],
                 placeholder4: ["anal4_1", "anal4_2", "anal4_3"],
