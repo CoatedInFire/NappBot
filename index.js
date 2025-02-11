@@ -123,39 +123,36 @@ async function getOrCreateUser(userId) {
   try {
     console.log(`🔍 Checking if user ${userId} exists in database...`);
 
-    // Check if user already exists
+    // Try to fetch user
     const [rows] = await pool.execute("SELECT * FROM users WHERE user_id = ?", [
       userId,
     ]);
 
-    if (rows.length === 0) {
-      console.log(`⚠️ User ${userId} not found, inserting into database...`);
-
-      // Insert the new user
-      const [insertResult] = await pool.execute(
-        "INSERT INTO users (user_id, sex, total_commands, favorite_command) VALUES (?, ?, ?, ?)",
-        [userId, "Random", 0, "None"]
-      );
-
-      console.log(`✅ Insert Result:`, insertResult);
-
-      // Fetch again to confirm insertion
-      const [newUser] = await pool.execute(
-        "SELECT * FROM users WHERE user_id = ?",
-        [userId]
-      );
-
-      if (newUser.length === 0) {
-        console.error(`❌ Insertion failed for user ${userId}.`);
-        return null;
-      }
-
-      console.log(`✅ User ${userId} successfully added.`);
-      return newUser[0];
+    if (rows.length > 0) {
+      console.log(`✅ User ${userId} already exists.`);
+      return rows[0];
     }
 
-    console.log(`✅ User ${userId} already exists.`);
-    return rows[0];
+    // Insert if user does not exist
+    console.log(`⚠️ User ${userId} not found, inserting into database...`);
+    await pool.execute(
+      "INSERT IGNORE INTO users (user_id, sex, total_commands, favorite_command) VALUES (?, ?, ?, ?)",
+      [userId, "Random", 0, "None"]
+    );
+
+    // Fetch again to confirm insertion
+    const [newUser] = await pool.execute(
+      "SELECT * FROM users WHERE user_id = ?",
+      [userId]
+    );
+
+    if (newUser.length === 0) {
+      console.error(`❌ Insertion failed for user ${userId}.`);
+      return null;
+    }
+
+    console.log(`✅ User ${userId} successfully added.`);
+    return newUser[0];
   } catch (error) {
     console.error(`❌ Error in getOrCreateUser for ${userId}:`, error);
     return null;
@@ -230,17 +227,16 @@ async function getFavoriteCommand(userId) {
 
 async function updateUserSettings(userId, newSex) {
   try {
-    console.log(`🔄 Updating user ${userId}...`);
+    await getOrCreateUser(userId); // Ensure user exists
 
+    console.log(`🔄 Updating user ${userId} settings...`);
     const [updateResult] = await pool.execute(
       "UPDATE users SET sex = ?, total_commands = total_commands + 1 WHERE user_id = ?",
       [newSex, userId]
     );
 
-    console.log(`📝 Update Result:`, updateResult);
-
     if (updateResult.affectedRows === 0) {
-      console.warn(`⚠️ No rows were updated. User ${userId} might not exist.`);
+      console.warn(`⚠️ No rows updated. User ${userId} might not exist.`);
       return false;
     }
 
@@ -264,10 +260,10 @@ client.once("ready", async () => {
   }
 
   try {
-    await createTable();
+    await createTable(); // ✅ Ensure tables exist first
 
     await pool.execute(
-      "INSERT IGNORE INTO global_stats (stat_name, stat_value) VALUES ('total_commands', '0')"
+      "INSERT IGNORE INTO global_stats (stat_name, stat_value) VALUES ('total_commands', 0)"
     );
 
     const defaultCommands = [
