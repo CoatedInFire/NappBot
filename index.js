@@ -52,6 +52,7 @@ const clientId = process.env.CLIENT_ID || "765387268557897799";
 
 const fetch = require("node-fetch");
 
+// e621 API implementation
 async function fetchE621Image(tags = []) {
     const query = tags.join("+");
     const url = `https://e621.net/posts.json?tags=${query}&limit=1`;
@@ -100,6 +101,48 @@ async function fetchE621Image(tags = []) {
         console.error("Error fetching image from e621:", error);
         return null;
     }
+}
+
+// Command Tracking
+const fs = require('fs');
+const profilesPath = 'profiles.json';
+
+function trackCommandUsage(interaction) {
+    let profiles = {};
+    try {
+        profiles = JSON.parse(fs.readFileSync(profilesPath, 'utf8'));
+    } catch (err) {
+        console.error("Could not load profiles.json, creating a new one.");
+    }
+
+    const userId = interaction.user.id;
+    if (!profiles.users) profiles.users = {};
+    if (!profiles.users[userId]) {
+        profiles.users[userId] = {
+            sex: "random",
+            usage: {
+                total_commands: 0,
+                favorite_command: null,
+                command_counts: {}
+            }
+        };
+    }
+    // Update command usage
+    const commandName = `/${interaction.commandName}`;
+    const userStats = profiles.users[userId].usage;
+    // Update per-user command count
+    userStats.total_commands++;
+    userStats.command_counts[commandName] = (userStats.command_counts[commandName] || 0) + 1;
+    // Find favorite command (most used)
+    const sortedCommands = Object.entries(userStats.command_counts).sort((a, b) => b[1] - a[1]);
+    userStats.favorite_command = sortedCommands.length > 0 ? sortedCommands[0][0] : null;
+    // Update server-wide statistics
+    if (!profiles.server_stats) profiles.server_stats = { total_commands: 0, top_commands: {}, top_users: {} };
+    profiles.server_stats.total_commands++;
+    profiles.server_stats.top_commands[commandName] = (profiles.server_stats.top_commands[commandName] || 0) + 1;
+    profiles.server_stats.top_users[userId] = userStats.total_commands;
+    // Save changes to profiles.json
+    fs.writeFileSync(profilesPath, JSON.stringify(profiles, null, 2));
 }
 
 // Slash commands
@@ -194,23 +237,11 @@ const commands = [
         description: "📜 View a list of all available commands!",
     },
     
-    // Set Preference
+    // Settings
     {
-        name: "setpreference",
-        description: "Set your preferred sex for the /fuck command.",
-        options: [
-            {
-                name: "sex",
-                type: 3, // STRING
-                description: "Choose your preference",
-                required: true,
-                choices: [
-                    { name: "Female", value: "female" },
-                    { name: "Male", value: "male" },
-                ],
-            },
-        ],
-    },
+        name: "settings",
+        description: "View your preferences and usage statistics.",
+    }
     
 ];
 
@@ -218,6 +249,8 @@ const commands = [
 // Handle slash commands
 client.on("interactionCreate", async (interaction) => {
     if (!interaction.isCommand()) return;
+    trackCommandUsage(interaction);
+    
     // Ping
     if (interaction.commandName === "ping") {
         await interaction.reply(
@@ -470,18 +503,99 @@ client.on("interactionCreate", async (interaction) => {
     
         await interaction.reply({ embeds: [embed] });
     }
-    if (interaction.commandName === "setpreference") {
+    // Settings  
+    if (interaction.commandName === "settings") {
         const sender = interaction.user;
-        const sex = interaction.options.getString("sex");
-    
-        // Save the preference
-        setUserPreference(sender.id, sex);
-    
-        await interaction.reply({
-            content: `✅ Your preference has been set to **${sex}**!`,
-            flags: 64,
-        });
-    }    
+        const userId = sender.id;
+
+        if (!profiles.users[userId]) {
+            return interaction.reply({ content: "❌ No data found for you yet!", flags: 64 });
+        }
+
+        const userStats = profiles.users[userId].usage;
+        const favoriteCommand = userStats.favorite_command || "None yet";
+        const totalCommands = userStats.total_commands;
+        const sexPreference = profiles.users[userId].sex || "random";
+
+        // Server-wide statistics
+        const globalStats = profiles.server_stats;
+        const serverTotalCommands = globalStats.total_commands || 0;
+
+        // Find top 3 users
+        const topUsersSorted = Object.entries(globalStats.top_users)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([id, count]) => `<@${id}> - **${count} commands**`);
+
+        // Find top 3 commands
+        const topCommandsSorted = Object.entries(globalStats.top_commands)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([cmd, count]) => `\`${cmd}\` - **${count} uses**`);
+
+        // Create embed
+        const embed = new EmbedBuilder()
+            .setTitle("⚙️ User Settings & Bot Statistics")
+            .setColor("#00ADEF")
+            .addFields(
+                { name: "👤 **Your Stats**", value: `**Total Commands Used:** ${totalCommands}\n**Favorite Command:** ${favoriteCommand}\n**Sex Preference:** ${sexPreference}`, inline: true },
+                { name: "🌍 **Global Stats**", value: `**Total Commands Run:** ${serverTotalCommands}`, inline: true },
+                { name: "🏆 **Top Users**", value: topUsersSorted.length ? topUsersSorted.join("\n") : "No data yet.", inline: false },
+                { name: "📊 **Most Used Commands**", value: topCommandsSorted.length ? topCommandsSorted.join("\n") : "No data yet.", inline: false }
+            )
+            .setTimestamp()
+            .setFooter({ text: `Requested by ${sender.tag}`, iconURL: sender.displayAvatarURL() });
+
+        // Create action row with a button
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("change_preference")
+                .setLabel("Change Preferences")
+                .setStyle(ButtonStyle.Primary)
+        );
+
+        await interaction.reply({ embeds: [embed], components: [row] });
+    }
+    if (interaction.isButton()) {
+        if (interaction.customId === "change_preference") {
+            const userId = interaction.user.id;
+
+            // Create buttons for changing preference
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId("set_preference_male")
+                    .setLabel("Male")
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId("set_preference_female")
+                    .setLabel("Female")
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setCustomId("set_preference_random")
+                    .setLabel("Random")
+                    .setStyle(ButtonStyle.Secondary)
+            );
+
+            await interaction.reply({
+                content: "Select your new preference:",
+                components: [row],
+                ephemeral: true
+            });
+        }
+
+        // Handle preference selection
+        if (interaction.customId.startsWith("set_preference_")) {
+            const newPreference = interaction.customId.replace("set_preference_", "");
+            profiles.users[interaction.user.id].sex = newPreference;
+
+            fs.writeFileSync("profiles.json", JSON.stringify(profiles, null, 2));
+
+            await interaction.update({
+                content: `✅ Your preference has been updated to **${newPreference}**!`,
+                components: []
+            });
+        }
+    } 
 });
 
 client.once("ready", async () => {
