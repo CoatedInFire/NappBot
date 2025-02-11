@@ -274,7 +274,6 @@ client.on("interactionCreate", async (interaction) => {
     
         // Default lick GIFs
         const lickGifs = [
-            "https://static1.e621.net/data/3a/be/3abef53aef46061042c4811bd579453b.png",
             "https://static1.e621.net/data/c5/a3/c5a3340470ff9e9f73b3ae1c07688cd8.png",
             "https://static1.e621.net/data/e1/2c/e12cf0ba9e5802cd96f19595b383f902.jpg",
             "https://static1.e621.net/data/0b/f2/0bf2fbb2a5ab72cc3113ceeb97ba05dd.png",
