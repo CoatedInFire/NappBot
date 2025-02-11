@@ -73,9 +73,10 @@ try {
 }
 
 // Test MySQL connection
-databasePool.query("SELECT 1")
+databasePool
+  .query("SELECT 1")
   .then(() => console.log("✅ MySQL connection test successful!"))
-  .catch(err => {
+  .catch((err) => {
     console.error("❌ MySQL connection test failed:", err);
     process.exit(1);
   });
@@ -625,52 +626,71 @@ client.on("interactionCreate", async (interaction) => {
 
     // Settings
     if (interaction.commandName === "settings") {
-      const userId = interaction.user.id;
+      try {
+        const userId = interaction.user.id;
 
-      // Fetch user preference
-      const [rows] = await database.execute(
-        "SELECT preference FROM user_preferences WHERE user_id = ?",
-        [userId]
-      );
+        // Fetch user preference
+        const [rows] = await databasePool.execute(
+          "SELECT preference FROM user_preferences WHERE user_id = ?",
+          [userId]
+        );
 
-      const preference = rows.length > 0 ? rows[0].preference : "random"; // Default to random
+        const preference = rows.length > 0 ? rows[0].preference : "random"; // Default to random
 
-      const embed = new EmbedBuilder()
-        .setTitle("⚙️ Your Settings")
-        .setDescription(`**Sex Preference:** ${preference}`)
-        .setColor("#3498db")
-        .setFooter({
-          text: `Requested by ${interaction.user.tag}`,
-          iconURL: interaction.user.displayAvatarURL(),
-        })
-        .setTimestamp();
+        const embed = new EmbedBuilder()
+          .setTitle("⚙️ Your Settings")
+          .setDescription(`**Sex Preference:** ${preference}`)
+          .setColor("#3498db")
+          .setFooter({
+            text: `Requested by ${interaction.user.tag}`,
+            iconURL: interaction.user.displayAvatarURL(),
+          })
+          .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+      } catch (error) {
+        console.error("❌ Error fetching user preference:", error);
+        await interaction.reply({
+          content:
+            "⚠️ An error occurred while fetching your settings. Please try again later.",
+          ephemeral: true,
+        });
+      }
     }
 
     // Set Preference
     if (interaction.commandName === "setpreference") {
-      const userId = interaction.user.id;
-      const preference = interaction.options.getString("sex");
+      try {
+        const userId = interaction.user.id;
+        const preference = interaction.options.getString("sex");
 
-      if (!["male", "female"].includes(preference)) {
-        return interaction.reply({
-          content: "❌ Invalid preference!",
+        if (!["male", "female"].includes(preference)) {
+          return interaction.reply({
+            content: "❌ Invalid preference! Please choose 'male' or 'female'.",
+            ephemeral: true,
+          });
+        }
+
+        // Insert or update the user preference
+        await databasePool.execute(
+          "INSERT INTO user_preferences (user_id, preference) VALUES (?, ?) ON DUPLICATE KEY UPDATE preference = VALUES(preference)",
+          [userId, preference]
+        );
+
+        await interaction.reply({
+          content: `✅ Your preference has been set to **${preference}**!`,
+          ephemeral: true,
+        });
+      } catch (error) {
+        console.error("❌ Error setting user preference:", error);
+        await interaction.reply({
+          content:
+            "⚠️ An error occurred while saving your preference. Please try again later.",
           ephemeral: true,
         });
       }
-
-      // Insert or update the user preference
-      await database.execute(
-        "INSERT INTO user_preferences (user_id, preference) VALUES (?, ?) ON DUPLICATE KEY UPDATE preference = VALUES(preference)",
-        [userId, preference]
-      );
-
-      await interaction.reply({
-        content: `✅ Your preference has been set to **${preference}**!`,
-        ephemeral: true,
-      });
     }
+
     // Commands List
     if (interaction.commandName === "cmds") {
       const commands = await client.application.commands.fetch();
