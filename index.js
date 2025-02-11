@@ -111,7 +111,6 @@ async function createTable() {
   }
 }
 
-
 async function getUserPreference(userId) {
   try {
     const [rows] = await pool.execute(
@@ -179,7 +178,17 @@ client.once("ready", async () => {
       "INSERT IGNORE INTO global_stats (stat_name, stat_value) VALUES ('total_commands', '0')"
     );
 
-    const defaultCommands = ["ping", "hug", "fuck", "lick", "kiss", "e621", "cmds", "settings", "setpreference"];
+    const defaultCommands = [
+      "ping",
+      "hug",
+      "fuck",
+      "lick",
+      "kiss",
+      "e621",
+      "cmds",
+      "settings",
+      "setpreference",
+    ];
     for (const cmd of defaultCommands) {
       await pool.execute(
         "INSERT IGNORE INTO command_usage (command_name, count) VALUES (?, 0)",
@@ -244,23 +253,29 @@ const userCommandCounts = {};
 
 async function updateGlobalStats(commandName) {
   try {
+    // Update the total commands count
     await pool.execute(
-      "UPDATE global_stats SET stat_value = COALESCE(stat_value, 0) + 1 WHERE stat_name = 'total_commands'",
-      []
+      "UPDATE global_stats SET stat_value = stat_value + 1 WHERE stat_name = 'total_commands'"
     );
-    if (!(await getGlobalStat("total_commands"))) {
-      await pool.execute(
-        "INSERT INTO global_stats (stat_name, stat_value) VALUES ('total_commands', 1)",
-        []
-      );
-    }
 
-    await pool.execute(
-      "INSERT INTO command_usage (command_name, count) VALUES (?, 1) ON DUPLICATE KEY UPDATE count = count + 1",
+    // Fetch existing command count
+    const [rows] = await pool.execute(
+      "SELECT count FROM command_usage WHERE command_name = ?",
       [commandName]
     );
+
+    let count = 0;
+    if (rows.length > 0) {
+      count = rows[0].count; // Ensure it's a number
+    }
+
+    // Insert or update command count properly
+    await pool.execute(
+      "INSERT INTO command_usage (command_name, count) VALUES (?, ?) ON DUPLICATE KEY UPDATE count = ?",
+      [commandName, count + 1, count + 1]
+    );
   } catch (error) {
-    console.error("Error updating global stats:", error);
+    console.error("❌ Error updating command usage:", error);
   }
 }
 
@@ -991,7 +1006,8 @@ client.on("interactionCreate", async (interaction) => {
     if (interaction.isModalSubmit()) {
       if (interaction.customId === "preference_modal") {
         const userId = interaction.user.id;
-        const sex = interaction.fields.getTextInputValue("sex_input") || "random";
+        const sex =
+          interaction.fields.getTextInputValue("sex_input") || "random";
 
         try {
           await setUserPreference(userId, sex);
