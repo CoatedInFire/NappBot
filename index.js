@@ -28,7 +28,6 @@ const client = new Client({
   ],
 });
 
-// ✅ Load commands from /commands and store them in client.commands
 client.commands = new Collection();
 const commandFiles = fs
   .readdirSync("./commands")
@@ -43,7 +42,6 @@ for (const file of commandFiles) {
   }
 }
 
-// ✅ Load events from /events and register them
 const eventFiles = fs
   .readdirSync("./events")
   .filter((file) => file.endsWith(".js"));
@@ -56,9 +54,8 @@ for (const file of eventFiles) {
   }
 }
 
-// ✅ Walltaker Auto-Posting Setup
-let lastPostedImages = {}; // Tracks last image per guild
-let lastCheckImages = {}; // Tracks last image seen per guild
+let lastPostedImages = {};
+let lastCheckImages = {};
 
 async function fetchWalltakerSettings() {
   try {
@@ -131,7 +128,6 @@ async function postWalltakerImages() {
   }
 }
 
-// ✅ Monitor for new Walltaker images
 async function monitorWalltakerChanges() {
   const settings = await fetchWalltakerSettings();
 
@@ -154,21 +150,14 @@ async function monitorWalltakerChanges() {
   }
 }
 
-// ✅ Start automatic Walltaker posting when bot is ready
 client.once("ready", async () => {
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-
-  // ✅ Check for changes every 30 seconds (faster detection)
   setInterval(monitorWalltakerChanges, 30 * 1000);
-
-  // ✅ Full image check every 10 minutes (backup in case of missed changes)
   setInterval(postWalltakerImages, 10 * 60 * 1000);
 });
 
-// ✅ Log in
 client.login(process.env.TOKEN);
 
-// ✅ Test database connection
 database
   .query("SELECT 1")
   .then(() => console.log("✅ Connected to MySQL!"))
