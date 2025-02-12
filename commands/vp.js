@@ -6,7 +6,7 @@ const {
   ButtonStyle,
 } = require("discord.js");
 const { fetchVPThreads } = require("../utils/fetchVPThreads");
-const { decode } = require("html-entities"); // Decode HTML entities
+const { decode } = require("html-entities");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,52 +17,49 @@ module.exports = {
     try {
       await interaction.deferReply();
 
-      const threadList = await fetchVPThreads();
+      let threadList = await fetchVPThreads();
       if (!threadList || threadList.length === 0) {
         return interaction.editReply("❌ No active threads found on /vp/!");
       }
 
-      let currentIndex = 0;
-      let threadData = threadList[currentIndex];
+      function getRandomThread() {
+        return threadList[Math.floor(Math.random() * threadList.length)];
+      }
+
+      let threadData = getRandomThread();
 
       function createEmbed(thread) {
         return new EmbedBuilder()
           .setTitle("🧵 Random /vp/ Thread")
           .setDescription(
             decode(thread.comment)
-              .replace(/<br\s*\/?>/g, "\n") // Replace HTML line breaks
-              .slice(0, 4096) // Discord embed character limit
+              .replace(/<br\s*\/?>/g, "\n") // Convert HTML line breaks to newlines
+              .slice(0, 4096) // Ensure text doesn't exceed Discord's limit
           )
           .setColor("#FFCC00")
           .setURL(thread.threadUrl)
           .setFooter({
-            text: `⭐ Thread ID: ${thread.threadId}`, // 📝 Added comment for clarity
+            text: `⭐ Thread ID: ${thread.threadId}`, // 📝 Thread ID for reference
           })
           .setImage(thread.thumbnail || null);
       }
 
-      function createButtons(index) {
+      function createButtons() {
         return new ActionRowBuilder().addComponents(
           new ButtonBuilder()
             .setLabel("🔗 View on 4chan")
             .setStyle(ButtonStyle.Link)
-            .setURL(threadList[index].threadUrl), // Update URL dynamically
+            .setURL(threadData.threadUrl), // Dynamically update URL
           new ButtonBuilder()
-            .setCustomId("prev_vp")
-            .setLabel("⬅️ Previous")
+            .setCustomId("random_vp")
+            .setLabel("🎲 New Random Thread")
             .setStyle(ButtonStyle.Primary)
-            .setDisabled(index === 0), // Disable if first thread
-          new ButtonBuilder()
-            .setCustomId("next_vp")
-            .setLabel("➡️ Next")
-            .setStyle(ButtonStyle.Primary)
-            .setDisabled(index === threadList.length - 1) // Disable if last thread
         );
       }
 
       let message = await interaction.editReply({
         embeds: [createEmbed(threadData)],
-        components: [createButtons(currentIndex)],
+        components: [createButtons()],
       });
 
       const filter = (i) => i.user.id === interaction.user.id;
@@ -72,18 +69,13 @@ module.exports = {
       });
 
       collector.on("collect", async (i) => {
-        if (i.customId === "next_vp") {
-          currentIndex++;
-        } else if (i.customId === "prev_vp") {
-          currentIndex--;
+        if (i.customId === "random_vp") {
+          threadData = getRandomThread();
+          await i.update({
+            embeds: [createEmbed(threadData)],
+            components: [createButtons()],
+          });
         }
-
-        threadData = threadList[currentIndex];
-
-        await i.update({
-          embeds: [createEmbed(threadData)],
-          components: [createButtons(currentIndex)],
-        });
       });
 
       collector.on("end", async () => {
