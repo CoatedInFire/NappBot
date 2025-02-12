@@ -3,6 +3,13 @@ const { Client, Collection, GatewayIntentBits } = require("discord.js");
 const fs = require("fs");
 const { database } = require("./utils/database");
 const { fetchWalltakerImage } = require("./utils/fetchWalltaker");
+const {
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
+
 require("./server"); // Express Server
 
 // Ensure required environment variables
