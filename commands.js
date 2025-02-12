@@ -79,11 +79,12 @@ const commands = [
   new SlashCommandBuilder()
     .setName("e621")
     .setDescription("🔞 Search for an image on e621.net")
-    .addStringOption((option) =>
-      option
-        .setName("tags")
-        .setDescription("Enter tags (separated by spaces, e.g., 'wolf male')")
-        .setRequired(true)
+    .addStringOption(
+      (option) =>
+        option
+          .setName("tags")
+          .setDescription("Enter tags (separated by spaces, e.g., 'wolf male')")
+          .setRequired(false) // Tags are now optional
     ),
 
   new SlashCommandBuilder()
@@ -114,13 +115,40 @@ const commands = [
         .setRequired(true)
         .addChoices(
           { name: "Female", value: "female" },
-          { name: "Male", value: "male" }
+          { name: "Male", value: "male" },
+          { name: "Random", value: "random" }
         )
     ),
 
   new SlashCommandBuilder()
     .setName("vp")
     .setDescription("🧵 Fetch a random thread from 4chan's /vp/ board"),
+
+  new SlashCommandBuilder()
+    .setName("walltaker")
+    .setDescription("🖼️ Fetch the latest image from a Walltaker feed")
+    .addIntegerOption((option) =>
+      option
+        .setName("feed_id")
+        .setDescription("The Walltaker feed ID to fetch images from")
+        .setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("setwalltaker")
+    .setDescription("⚙️ Configure Walltaker auto-posting for this server")
+    .addIntegerOption((option) =>
+      option
+        .setName("feed_id")
+        .setDescription("The Walltaker feed ID to pull images from")
+        .setRequired(true)
+    )
+    .addChannelOption((option) =>
+      option
+        .setName("channel")
+        .setDescription("Select the channel to post Walltaker images")
+        .setRequired(true)
+    ),
 ];
 
 module.exports = commands;
