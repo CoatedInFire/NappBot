@@ -1,53 +1,51 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const fs = require("fs");
-const path = require("path");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("cmds")
     .setDescription("List all available commands."),
+
   async execute(interaction) {
+    console.log(
+      `[DEBUG] /cmds used by ${interaction.user.tag} (${interaction.user.id})`
+    );
+
     try {
-      // Check if application commands are available
-      if (!interaction.client.application) {
-        return interaction.reply({
-          content: "❌ Application commands are not available.",
-          ephemeral: true,
-        });
-      }
+      await interaction.deferReply({ ephemeral: false });
+      console.log("[DEBUG] Reply deferred");
 
-      // Fetch registered commands from Discord (optional)
-      const registeredCommands =
-        await interaction.client.application.commands.fetch();
-
-      // Read commands from the local `commands/` directory
-      const commandsPath = path.join(__dirname, "../commands"); // Adjust if needed
-      const commandFiles = fs
-        .readdirSync(commandsPath)
-        .filter((file) => file.endsWith(".js"));
-
-      const commandList = commandFiles
-        .map((file) => {
-          const command = require(path.join(commandsPath, file));
-          return `\`/${command.data.name}\` - ${command.data.description}`;
-        })
+      // Get commands from client.commands
+      const commandList = interaction.client.commands
+        .map((cmd) => `\`/${cmd.data.name}\` - ${cmd.data.description}`)
         .join("\n");
 
-      // Embed message
+      if (!commandList) {
+        console.warn("[WARN] No commands found in client.commands.");
+        return interaction.editReply("⚠️ No commands found.");
+      }
+
+      console.log("[DEBUG] Generated command list");
+
       const embed = new EmbedBuilder()
         .setTitle("📜 Available Commands")
         .setColor("#F1C40F")
         .setDescription(commandList)
-        .setFooter({ text: `Total Commands: ${commandFiles.length}` })
+        .setFooter({
+          text: `Total Commands: ${interaction.client.commands.size}`,
+        })
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed], ephemeral: false });
+      await interaction.editReply({ embeds: [embed] });
+      console.log("[DEBUG] Successfully sent command list");
     } catch (error) {
-      console.error("❌ Error displaying commands:", error);
-      await interaction.reply({
-        content: "⚠️ Failed to retrieve commands.",
-        ephemeral: true,
-      });
+      console.error("[ERROR] /cmds failed:", error);
+      try {
+        await interaction.editReply(
+          "⚠️ An error occurred while retrieving commands."
+        );
+      } catch (editError) {
+        console.error("[ERROR] Failed to send error response:", editError);
+      }
     }
   },
 };
