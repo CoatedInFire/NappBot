@@ -693,17 +693,19 @@ client.on("interactionCreate", async (interaction) => {
           .setURL(postData.postUrl)
       );
 
-      // Check if the media is a .webm
+      // Handle WebM files with thumbnails
       if (postData.imageUrl.endsWith(".webm")) {
-        await interaction.editReply({
-          content: `🎥 **WebM File:** [Click here to view](${postData.imageUrl})`,
-          embeds: [embed],
-          components: [row],
-        });
+        const webmThumbnail =
+          postData.previewUrl || "https://e621.net/static/logo.png"; // Use preview if available
+        embed.setImage(webmThumbnail);
+        embed.setDescription(
+          `**Artist(s):** ${postData.artists}\n**Characters:** ${postData.characters}\n\n🎥 **[Click here to view the WebM](${postData.imageUrl})**`
+        );
       } else {
         embed.setImage(postData.imageUrl || "https://e621.net/static/logo.png");
-        await interaction.editReply({ embeds: [embed], components: [row] });
       }
+
+      await interaction.editReply({ embeds: [embed], components: [row] });
     }
 
     // Settings
