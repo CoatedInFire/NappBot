@@ -50,7 +50,8 @@ for (const file of eventFiles) {
 }
 
 // ✅ Walltaker Auto-Posting Setup
-let lastPostedImages = {}; // Track last image for each guild
+let lastPostedImages = {}; // Tracks last image per guild
+let lastCheckImages = {}; // Tracks last image seen per guild
 
 async function fetchWalltakerSettings() {
   try {
@@ -74,20 +75,35 @@ async function postWalltakerImages() {
       }
 
       const imageData = await fetchWalltakerImage(feed_id);
-      if (!imageData || lastPostedImages[guild_id] === imageData.imageUrl) {
-        console.log(`⚠️ No new Walltaker images for guild ${guild_id}`);
+      if (!imageData) {
+        console.log(
+          `⚠️ No image found in Walltaker feed for guild ${guild_id}`
+        );
         continue;
       }
 
-      lastPostedImages[guild_id] = imageData.imageUrl; // Update last posted image
+      const { imageUrl, sourceUrl } = imageData;
 
-      const messageContent = `🖼️ **New Walltaker Image!**\n🔗 [View on Walltaker](${imageData.sourceUrl})`;
-      await channel.send({
-        content: messageContent,
-        files: [imageData.imageUrl],
-      });
+      // ✅ Check if image is new
+      if (lastPostedImages[guild_id] !== imageUrl) {
+        console.log(
+          `🆕 New Walltaker image detected for guild ${guild_id}, sending now!`
+        );
 
-      console.log(`✅ Walltaker image posted to guild ${guild_id}`);
+        lastPostedImages[guild_id] = imageUrl; // Update last posted image
+
+        await channel.send({
+          content: `🖼️ **New Walltaker Image!**\n🔗 [View on Walltaker](${sourceUrl})`,
+          files: [imageUrl],
+        });
+      } else {
+        console.log(
+          `✅ No new Walltaker image for guild ${guild_id}, skipping...`
+        );
+      }
+
+      // ✅ Update last seen image to detect changes quickly
+      lastCheckImages[guild_id] = imageUrl;
     } catch (error) {
       console.error(
         `❌ Error posting Walltaker image for guild ${guild_id}:`,
@@ -97,10 +113,38 @@ async function postWalltakerImages() {
   }
 }
 
+// ✅ Monitor for new Walltaker images
+async function monitorWalltakerChanges() {
+  const settings = await fetchWalltakerSettings();
+
+  for (const { guild_id, feed_id } of settings) {
+    try {
+      const imageData = await fetchWalltakerImage(feed_id);
+      if (!imageData) continue;
+
+      const { imageUrl } = imageData;
+
+      if (lastCheckImages[guild_id] !== imageUrl) {
+        console.log(
+          `🚨 Change detected in Walltaker feed ${feed_id} for guild ${guild_id}, posting immediately!`
+        );
+        await postWalltakerImages();
+      }
+    } catch (error) {
+      console.error(`❌ Error checking Walltaker feed ${feed_id}:`, error);
+    }
+  }
+}
+
 // ✅ Start automatic Walltaker posting when bot is ready
 client.once("ready", async () => {
-  console.log("🕵️‍♂️ Starting automated Walltaker image posting...");
-  setInterval(postWalltakerImages, 10 * 60 * 1000); // Every 10 minutes
+  console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
+
+  // ✅ Check for changes every 30 seconds (faster detection)
+  setInterval(monitorWalltakerChanges, 30 * 1000);
+
+  // ✅ Full image check every 10 minutes (backup in case of missed changes)
+  setInterval(postWalltakerImages, 10 * 60 * 1000);
 });
 
 // ✅ Log in
