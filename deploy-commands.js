@@ -1,4 +1,8 @@
 require("dotenv").config();
+console.log(
+  "🔍 Debug: TOKEN is",
+  process.env.TOKEN ? "✅ Loaded" : "❌ NOT FOUND"
+);
 const { REST, Routes } = require("discord.js");
 const commands = require("./commands");
 
