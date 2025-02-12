@@ -232,6 +232,37 @@ async function fetchE621User(username) {
   }
 }
 
+// Fetch all active /vp/ threads
+async function fetchVPThreads() {
+  const url = "https://a.4cdn.org/vp/catalog.json";
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok)
+      throw new Error(`4chan API error: ${response.statusText}`);
+
+    const data = await response.json();
+    if (!data || data.length === 0) return null;
+
+    // Flatten all pages into one thread list
+    const threads = data.flatMap((page) => page.threads);
+    if (threads.length === 0) return null;
+
+    return threads.map((thread) => ({
+      threadId: thread.no,
+      subject: thread.sub || "No title",
+      comment: thread.com
+        ? thread.com.replace(/<[^>]*>/g, "")
+        : "No description",
+      threadUrl: `https://boards.4channel.org/vp/thread/${thread.no}`,
+      thumbnail: thread.tim ? `https://i.4cdn.org/vp/${thread.tim}s.jpg` : null,
+    }));
+  } catch (error) {
+    console.error("❌ Error fetching /vp/ threads:", error.message);
+    return null;
+  }
+}
+
 // Slash commands
 const commands = [
   // Ping
@@ -375,6 +406,13 @@ const commands = [
         ],
       },
     ],
+  },
+
+  // 4chan /vp/ Command
+  {
+    name: "vp",
+    description: "🧵 Fetch a random thread from 4chan's /vp/ board",
+    options: [],
   },
 ];
 
@@ -976,6 +1014,90 @@ client.on("interactionCreate", async (interaction) => {
       await interaction.reply({
         content: `✅ Your preference has been set to **${sex}**!`,
         ephemeral: true,
+      });
+    }
+
+    // vp
+    if (interaction.commandName === "vp") {
+      await interaction.deferReply();
+
+      const threadList = await fetchVPThreads();
+      if (!threadList || threadList.length === 0) {
+        return interaction.editReply("❌ No active threads found on /vp/!");
+      }
+
+      let currentIndex = 0;
+      const threadData = threadList[currentIndex];
+
+      const embed = new EmbedBuilder()
+        .setTitle("🧵 Random /vp/ Thread")
+        .setDescription(threadData.comment)
+        .setColor("#FFCC00")
+        .setURL(threadData.threadUrl)
+        .setFooter({ text: `Thread ID: ${threadData.threadId}` });
+
+      if (threadData.thumbnail) {
+        embed.setImage(threadData.thumbnail);
+      }
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel("🔗 View on 4chan")
+          .setStyle(ButtonStyle.Link)
+          .setURL(threadData.threadUrl),
+        new ButtonBuilder()
+          .setCustomId("prev_vp")
+          .setLabel("⬅️ Previous")
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(true), // Disabled initially
+        new ButtonBuilder()
+          .setCustomId("next_vp")
+          .setLabel("➡️ Next")
+          .setStyle(ButtonStyle.Primary)
+      );
+
+      const message = await interaction.editReply({
+        embeds: [embed],
+        components: [row],
+      });
+
+      // Button Interaction Collector
+      const filter = (i) => i.user.id === interaction.user.id;
+      const collector = message.createMessageComponentCollector({
+        filter,
+        time: 60000,
+      });
+
+      collector.on("collect", async (i) => {
+        if (i.customId === "next_vp") {
+          currentIndex++;
+        } else if (i.customId === "prev_vp") {
+          currentIndex--;
+        }
+
+        const newThreadData = threadList[currentIndex];
+
+        const updatedEmbed = new EmbedBuilder()
+          .setTitle("🧵 Random /vp/ Thread")
+          .setDescription(newThreadData.comment)
+          .setColor("#FFCC00")
+          .setURL(newThreadData.threadUrl)
+          .setFooter({ text: `Thread ID: ${newThreadData.threadId}` });
+
+        if (newThreadData.thumbnail) {
+          updatedEmbed.setImage(newThreadData.thumbnail);
+        }
+
+        row.components[1].setDisabled(currentIndex === 0); // Disable 'Previous' on first
+        row.components[2].setDisabled(currentIndex === threadList.length - 1); // Disable 'Next' on last
+
+        await i.update({ embeds: [updatedEmbed], components: [row] });
+      });
+
+      collector.on("end", async () => {
+        row.components[1].setDisabled(true);
+        row.components[2].setDisabled(true);
+        await interaction.editReply({ components: [row] });
       });
     }
   } catch (error) {
