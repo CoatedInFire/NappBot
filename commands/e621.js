@@ -44,17 +44,19 @@ module.exports = {
         .setTitle("🔞 e621 Image Result")
         .setDescription(
           `**Artist(s):** ${
-            postData.artists.length ? postData.artists.join(", ") : "N/A"
+            Array.isArray(postData.artists) && postData.artists.length
+              ? postData.artists.join(", ")
+              : "N/A"
           }\n` +
             `**Characters:** ${
-              postData.characters.length
+              Array.isArray(postData.characters) && postData.characters.length
                 ? postData.characters.join(", ")
                 : "N/A"
             }`
         )
         .setColor("#00549F")
         .setImage(
-          postData.imageUrl.endsWith(".webm")
+          postData.imageUrl && postData.imageUrl.endsWith(".webm")
             ? postData.thumbnail
             : postData.imageUrl
         )

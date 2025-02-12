@@ -1,4 +1,4 @@
-const fetch = require("node-fetch"); // Ensure you have node-fetch installed
+const fetch = require("node-fetch"); // Ensure node-fetch is installed
 
 // Fetch e621 Images
 async function fetchE621Images(tags = [], count = 10) {
@@ -6,12 +6,19 @@ async function fetchE621Images(tags = [], count = 10) {
   const url = `https://e621.net/posts.json?tags=${query}&limit=100`; // Fetches up to 100 posts
   const apiKey = process.env.E621_API_KEY;
 
+  if (!apiKey) {
+    console.error("❌ Missing E621 API Key!");
+    return null;
+  }
+
   try {
     const response = await fetch(url, {
       method: "GET",
       headers: {
         "User-Agent": "NappBot/1.0 (by Napp on e621)",
-        Authorization: `Basic ${Buffer.from(`Napp:${apiKey}`).toString("base64")}`,
+        Authorization: `Basic ${Buffer.from(`Napp:${apiKey}`).toString(
+          "base64"
+        )}`,
       },
     });
 
@@ -25,23 +32,35 @@ async function fetchE621Images(tags = [], count = 10) {
     }
 
     // Fisher-Yates shuffle for better randomization
-    const shuffledPosts = data.posts.slice();
+    const shuffledPosts = [...data.posts];
     for (let i = shuffledPosts.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [shuffledPosts[i], shuffledPosts[j]] = [shuffledPosts[j], shuffledPosts[i]];
+      [shuffledPosts[i], shuffledPosts[j]] = [
+        shuffledPosts[j],
+        shuffledPosts[i],
+      ];
     }
 
-    // Select the first `count` shuffled posts (ensures unique images)
-    const selectedPosts = shuffledPosts.slice(0, Math.min(count, shuffledPosts.length));
+    // Select the first `count` shuffled posts
+    const selectedPosts = shuffledPosts.slice(
+      0,
+      Math.min(count, shuffledPosts.length)
+    );
 
     return selectedPosts.map((post) => ({
       postId: post.id,
       postUrl: `https://e621.net/posts/${post.id}`,
-      imageUrl: post.file?.url || "No image available",
-      thumbnail: post.preview?.url || "https://e621.net/static/logo.png",
-      artists: post.tags.artist.length > 0 ? post.tags.artist.join(", ") : "Unknown",
-      characters: post.tags.character.slice(0, 3).join(", ") || "No characters tagged",
-      score: post.score.total || 0,
+      imageUrl: post.file?.url || null, // NULL if no image (avoids sending broken URLs)
+      thumbnail: post.preview?.url || null, // NULL instead of a placeholder
+      artists:
+        Array.isArray(post.tags?.artist) && post.tags.artist.length > 0
+          ? post.tags.artist.join(", ")
+          : "Unknown",
+      characters:
+        Array.isArray(post.tags?.character) && post.tags.character.length > 0
+          ? post.tags.character.slice(0, 3).join(", ")
+          : "No characters tagged",
+      score: post.score?.total || 0,
       favCount: post.fav_count || 0,
     }));
   } catch (error) {
@@ -55,12 +74,19 @@ async function fetchE621User(username) {
   const url = `https://e621.net/users.json?search[name_matches]=${username}`;
   const apiKey = process.env.E621_API_KEY;
 
+  if (!apiKey) {
+    console.error("❌ Missing E621 API Key!");
+    return null;
+  }
+
   try {
     const response = await fetch(url, {
       method: "GET",
       headers: {
         "User-Agent": "NappBot/1.0 (by Napp on e621)",
-        Authorization: `Basic ${Buffer.from(`Napp:${apiKey}`).toString("base64")}`,
+        Authorization: `Basic ${Buffer.from(`Napp:${apiKey}`).toString(
+          "base64"
+        )}`,
       },
     });
 
