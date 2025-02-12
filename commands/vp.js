@@ -1,14 +1,11 @@
-const {
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { fetchVPThreads } = require("../utils/fetchVPThreads"); // Ensure this function exists
 
 module.exports = {
-  name: "vp",
-  description: "Fetches a random /vp/ thread from 4chan.",
+  data: new SlashCommandBuilder()
+    .setName("vp")
+    .setDescription("Fetches a random /vp/ thread from 4chan."),
+  
   async execute(interaction) {
     try {
       await interaction.deferReply();
