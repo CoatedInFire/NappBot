@@ -115,7 +115,6 @@ async function getUserPreference(userId) {
     return "random";
   }
 }
-
 async function setUserPreference(userId, preference) {
   if (!["male", "female", "random"].includes(preference)) return false;
 
@@ -134,9 +133,9 @@ async function setUserPreference(userId, preference) {
 }
 
 // Fetch e621
-async function fetchE621Image(tags = []) {
+async function fetchE621Images(tags = [], count = 10) {
   const query = tags.join("+");
-  const url = `https://e621.net/posts.json?tags=${query}&limit=100`;
+  const url = `https://e621.net/posts.json?tags=${query}&limit=100`; // Fetches up to 100 posts
   const apiKey = process.env.E621_API_KEY;
 
   try {
@@ -159,24 +158,80 @@ async function fetchE621Image(tags = []) {
       return null;
     }
 
-    const post = data.posts[Math.floor(Math.random() * data.posts.length)];
+    // Fisher-Yates shuffle for better randomization
+    const shuffledPosts = data.posts.slice();
+    for (let i = shuffledPosts.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledPosts[i], shuffledPosts[j]] = [
+        shuffledPosts[j],
+        shuffledPosts[i],
+      ];
+    }
 
-    return {
+    // Select the first `count` shuffled posts (ensures unique images)
+    const selectedPosts = shuffledPosts.slice(
+      0,
+      Math.min(count, shuffledPosts.length)
+    );
+
+    return selectedPosts.map((post) => ({
+      postId: post.id,
+      postUrl: `https://e621.net/posts/${post.id}`,
       imageUrl: post.file?.url || "No image available",
+      thumbnail: post.preview?.url || "https://e621.net/static/logo.png",
       artists:
         post.tags.artist.length > 0 ? post.tags.artist.join(", ") : "Unknown",
       characters:
         post.tags.character.slice(0, 3).join(", ") || "No characters tagged",
       score: post.score.total || 0,
       favCount: post.fav_count || 0,
-      postId: post.id || "Unknown",
-      postUrl: `https://e621.net/posts/${post.id}`,
-    };
+    }));
   } catch (error) {
-    console.error("❌ Error fetching image from e621:", error.message);
+    console.error("❌ Error fetching images from e621:", error.message);
     return null;
   }
 }
+async function fetchE621User(username) {
+  const url = `https://e621.net/users.json?search[name_matches]=${username}`;
+  const apiKey = process.env.E621_API_KEY;
+
+  try {
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "User-Agent": "NappBot/1.0 (by Napp on e621)",
+        Authorization: `Basic ${Buffer.from(`Napp:${apiKey}`).toString(
+          "base64"
+        )}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`e621 API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    const user = data[0];
+
+    return {
+      id: user.id,
+      username: user.name,
+      joined: new Date(user.created_at).toDateString(),
+      uploads: user.post_upload_count || 0,
+      tagEdits: user.tag_edit_count || 0,
+      favorites: user.favorite_count || 0,
+      notes: user.note_update_count || 0,
+    };
+  } catch (error) {
+    console.error("❌ Error fetching e621 user data:", error.message);
+    return null;
+  }
+}
+
 // Slash commands
 const commands = [
   // Ping
@@ -273,6 +328,20 @@ const commands = [
         name: "tags",
         type: 3,
         description: "Enter tags (separated by spaces, e.g., 'wolf male')",
+        required: true,
+      },
+    ],
+  },
+
+  // e621 profile lookup
+  {
+    name: "e621profile",
+    description: "📊 Get statistics of an e621 user",
+    options: [
+      {
+        name: "username",
+        type: 3, // STRING
+        description: "Enter the username to fetch profile stats",
         required: true,
       },
     ],
@@ -668,44 +737,138 @@ client.on("interactionCreate", async (interaction) => {
       const sender = interaction.user;
       const tags = interaction.options.getString("tags")?.split(" ") || [];
 
-      await interaction.deferReply(); // Defer reply to allow time for API fetch
+      await interaction.deferReply(); // Defer reply while fetching data
 
-      const postData = await fetchE621Image(tags);
-      if (!postData) {
+      const postDataArray = await fetchE621Images(tags, 10); // Fetch 10 posts randomly
+      if (!postDataArray || postDataArray.length === 0) {
         return interaction.editReply("❌ No results found!");
       }
 
-      const embed = new EmbedBuilder()
-        .setTitle("🔞 e621 Image Result")
-        .setDescription(
-          `**Artist(s):** ${postData.artists}\n**Characters:** ${postData.characters}`
-        )
-        .setColor("#00549F")
-        .setFooter({
-          text: `⭐ Score: ${postData.score} | ❤️ Favorites: ${postData.favCount} | 📌 Post ID: ${postData.postId}\nRequested by ${sender.tag}`,
-          iconURL: sender.displayAvatarURL(),
-        });
+      let currentIndex = 0;
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setLabel("🔗 View on e621")
-          .setStyle(ButtonStyle.Link)
-          .setURL(postData.postUrl)
-      );
-
-      // Handle WebM files with thumbnails
-      if (postData.imageUrl.endsWith(".webm")) {
-        const webmThumbnail =
-          postData.previewUrl || "https://e621.net/static/logo.png"; // Use preview if available
-        embed.setImage(webmThumbnail);
-        embed.setDescription(
-          `**Artist(s):** ${postData.artists}\n**Characters:** ${postData.characters}\n\n🎥 **[Click here to view the WebM](${postData.imageUrl})**`
-        );
-      } else {
-        embed.setImage(postData.imageUrl || "https://e621.net/static/logo.png");
+      // Function to create an embed from postData
+      function createEmbed(postData) {
+        return new EmbedBuilder()
+          .setTitle("🔞 e621 Image Result")
+          .setDescription(
+            `**Artist(s):** ${postData.artists}\n**Characters:** ${postData.characters}`
+          )
+          .setColor("#00549F")
+          .setImage(
+            postData.imageUrl.endsWith(".webm")
+              ? postData.thumbnail
+              : postData.imageUrl
+          )
+          .setFooter({
+            text: `⭐ Score: ${postData.score} | ❤️ Favorites: ${postData.favCount} | 📌 Post ID: ${postData.postId}\nRequested by ${sender.tag}`,
+            iconURL: sender.displayAvatarURL(),
+          });
       }
 
-      await interaction.editReply({ embeds: [embed], components: [row] });
+      // Function to create action buttons
+      function createRow() {
+        return new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setLabel("🔗 View on e621")
+            .setStyle(ButtonStyle.Link)
+            .setURL(postDataArray[currentIndex].postUrl),
+          new ButtonBuilder()
+            .setCustomId("prev")
+            .setLabel("⬅️ Previous")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentIndex === 0),
+          new ButtonBuilder()
+            .setCustomId("next")
+            .setLabel("➡️ Next")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(currentIndex === postDataArray.length - 1)
+        );
+      }
+
+      const message = await interaction.editReply({
+        embeds: [createEmbed(postDataArray[currentIndex])],
+        components: [createRow()],
+      });
+
+      // Button Interaction Collector
+      const filter = (i) => i.user.id === interaction.user.id;
+      const collector = message.createMessageComponentCollector({
+        filter,
+        time: 60000,
+      });
+
+      collector.on("collect", async (i) => {
+        if (i.customId === "next") {
+          currentIndex = Math.min(currentIndex + 1, postDataArray.length - 1);
+        } else if (i.customId === "prev") {
+          currentIndex = Math.max(currentIndex - 1, 0);
+        }
+
+        await i.update({
+          embeds: [createEmbed(postDataArray[currentIndex])],
+          components: [createRow()],
+        });
+      });
+
+      collector.on("end", async () => {
+        await interaction.editReply({ components: [] }); // Removes buttons when interaction expires
+      });
+    }
+
+    // e621profile Command
+    if (interaction.commandName === "e621profile") {
+      const username = interaction.options.getString("username");
+
+      if (!username) {
+        return interaction.reply("❌ You must provide a username!");
+      }
+
+      await interaction.deferReply();
+
+      const profileData = await fetchE621User(username);
+      if (!profileData) {
+        return interaction.editReply("❌ User not found or API error.");
+      }
+
+      const embed = new EmbedBuilder()
+        .setTitle(`📊 e621 User Profile: ${profileData.username}`)
+        .setURL(`https://e621.net/users/${profileData.id}`)
+        .setColor("#00549F")
+        .setThumbnail("https://e621.net/static/logo.png")
+        .addFields(
+          {
+            name: "🆔 User ID",
+            value: profileData.id.toString(),
+            inline: true,
+          },
+          { name: "📅 Joined", value: profileData.joined, inline: true },
+          {
+            name: "📤 Uploads",
+            value: profileData.uploads.toString(),
+            inline: true,
+          },
+          {
+            name: "📝 Tag Edits",
+            value: profileData.tagEdits.toString(),
+            inline: true,
+          },
+          {
+            name: "❤️ Favorites",
+            value: profileData.favorites.toString(),
+            inline: true,
+          },
+          {
+            name: "🔧 Notes",
+            value: profileData.notes.toString(),
+            inline: true,
+          }
+        )
+        .setFooter({
+          text: `Requested by ${interaction.user.tag}`,
+          iconURL: interaction.user.displayAvatarURL(),
+        });
+
+      await interaction.editReply({ embeds: [embed] });
     }
 
     // Settings
