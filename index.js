@@ -92,10 +92,21 @@ async function postWalltakerImages() {
 
         lastPostedImages[guild_id] = imageUrl; // Update last posted image
 
-        await channel.send({
-          content: `🖼️ **New Walltaker Image!**\n🔗 [View on Walltaker](${sourceUrl})`,
-          files: [imageUrl],
-        });
+        // ✅ Create Embed
+        const embed = new EmbedBuilder()
+          .setTitle(`🖼️ Walltaker Image for Feed ${feed_id}`)
+          .setImage(imageUrl)
+          .setColor("#3498DB");
+
+        // ✅ Create Button
+        const row = new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setLabel("🔗 View on Walltaker")
+            .setStyle(ButtonStyle.Link)
+            .setURL(sourceUrl)
+        );
+
+        await channel.send({ embeds: [embed], components: [row] });
       } else {
         console.log(
           `✅ No new Walltaker image for guild ${guild_id}, skipping...`
