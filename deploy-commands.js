@@ -7,47 +7,39 @@ const token = process.env.TOKEN;
 const clientId = process.env.CLIENT_ID;
 const guildId = "1146990138656825415"; // Your Server ID
 
-if (!token || !clientId || !guildId) {
-  console.error("❌ Missing required environment variables!");
-  process.exit(1);
-}
-
-// ✅ Debug: Check if token is loaded
-console.log("🔍 Debug: TOKEN is", token ? "✅ Loaded" : "❌ NOT FOUND");
-
-// ✅ Load all command files dynamically
 const commands = [];
+
+// ✅ Read commands from /commands/
 const commandFiles = fs
-  .readdirSync(path.join(__dirname, "../commands")) // 🔥 Corrected Path
+  .readdirSync("./commands")
   .filter((file) => file.endsWith(".js"));
 
 for (const file of commandFiles) {
-  const command = require(path.join(__dirname, "../commands", file)); // 🔥 Corrected Path
-  if (command.data) commands.push(command.data.toJSON());
+  const command = require(`../commands/${file}`);
+  if (command.data) {
+    commands.push(command.data.toJSON());
+  } else {
+    console.warn(`⚠️ Skipping invalid command file: ${file}`);
+  }
 }
 
-// ✅ Create REST client
 const rest = new REST({ version: "10" }).setToken(token);
 
 (async () => {
   try {
-    console.log("🚨 Clearing all guild commands...");
+    console.log("🚨 Deleting old commands...");
+
+    // Clear existing commands before re-registering
     await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
       body: [],
     });
-    console.log("✅ Cleared all guild commands!");
+    console.log("✅ Cleared old commands!");
 
-    // 🔥 Prevent unnecessary API calls if no commands exist
-    if (commands.length === 0) {
-      console.log("⚠️ No commands found to register. Skipping deployment.");
-      return;
-    }
-
-    console.log("🔄 Registering application commands...");
+    console.log("🔄 Registering new commands...");
     await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
       body: commands,
     });
-    console.log(`✅ Successfully registered ${commands.length} commands.`);
+    console.log("✅ Successfully registered commands.");
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
   }

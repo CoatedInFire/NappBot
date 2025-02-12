@@ -1,35 +1,41 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName("cmds")
-    .setDescription("📜 List all available commands."),
-
-  async execute(interaction, client) {
+  data: {
+    name: "cmds",
+    description: "List all available commands.",
+  },
+  async execute(interaction) {
     try {
-      const commands = await client.application.commands.fetch();
-      if (!commands.size) {
+      // Ensure the client is ready before using application commands
+      if (!interaction.client.application) {
         return interaction.reply({
-          content: "❌ No commands found!",
+          content: "❌ Application commands are not available.",
           ephemeral: true,
         });
       }
 
+      // Fetch registered commands
+      const commands = await interaction.client.application.commands.fetch();
+
+      if (!commands.size) {
+        return interaction.reply({
+          content: "⚠️ No commands found.",
+          ephemeral: true,
+        });
+      }
+
+      // Create a response message listing all commands
       const commandList = commands
         .map((cmd) => `\`/${cmd.name}\` - ${cmd.description}`)
         .join("\n");
 
-      const embed = new EmbedBuilder()
-        .setTitle("📜 Available Commands")
-        .setDescription(commandList)
-        .setColor("#FFA500")
-        .setTimestamp();
-
-      await interaction.reply({ embeds: [embed], ephemeral: true });
+      await interaction.reply({
+        content: `📜 **Available Commands:**\n${commandList}`,
+        ephemeral: true, // Use flags instead later
+      });
     } catch (error) {
       console.error("❌ Error fetching commands:", error);
       await interaction.reply({
-        content: "⚠️ Failed to fetch commands. Try again later.",
+        content: "⚠️ Failed to retrieve commands.",
         ephemeral: true,
       });
     }
