@@ -22,17 +22,25 @@ client.once("ready", () => console.log(`✅ Logged in as ${client.user.tag}`));
 
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isCommand()) return;
-  const command = commandMap.get(interaction.commandName);
-  if (!command)
-    return interaction.reply({
+
+  const command = commands.find((cmd) => cmd.name === interaction.commandName);
+
+  if (!command) {
+    await interaction.reply({
       content: "❌ Command not found!",
       ephemeral: true,
     });
+    return;
+  }
 
   try {
     console.log(`⚡ Executing: ${interaction.commandName}`);
-    if (typeof command.execute === "function")
-      await command.execute(interaction);
+
+    // TEMP FIX: Make the bot reply with a placeholder response
+    await interaction.reply({
+      content: `✅ Command received: **${interaction.commandName}**`,
+      ephemeral: true,
+    });
   } catch (error) {
     console.error(`❌ Error executing ${interaction.commandName}:`, error);
     await interaction.reply({
