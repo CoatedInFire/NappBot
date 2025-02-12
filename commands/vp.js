@@ -6,7 +6,7 @@ const {
   ButtonStyle,
 } = require("discord.js");
 const { fetchVPThreads } = require("../utils/fetchVPThreads");
-const he = require("he"); // Import HTML entity decoder
+const { decode } = require("html-entities"); // Decode HTML entities
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -23,51 +23,48 @@ module.exports = {
       }
 
       let currentIndex = 0;
+      let threadData = threadList[currentIndex];
 
-      // Function to decode HTML entities properly
-      const formatText = (text) => {
-        return he
-          .decode(text) // Convert all HTML entities (handles everything)
-          .replace(/<br\s*\/?>/gi, "\n") // Convert <br> to newlines
-          .replace(/<\/?[^>]+(>|$)/g, "") // Remove all remaining HTML tags
-          .trim(); // Trim spaces
-      };
-
-      const threadData = threadList[currentIndex];
-
-      const embed = new EmbedBuilder()
-        .setTitle(`🧵 ${threadData.subject}`)
-        .setDescription(formatText(threadData.comment))
-        .setColor("#FFCC00")
-        .setURL(threadData.threadUrl)
-        .setFooter({ text: `Thread ID: ${threadData.threadId}` });
-
-      if (threadData.thumbnail) {
-        embed.setImage(threadData.thumbnail);
+      function createEmbed(thread) {
+        return new EmbedBuilder()
+          .setTitle("🧵 Random /vp/ Thread")
+          .setDescription(
+            decode(thread.comment)
+              .replace(/<br\s*\/?>/g, "\n") // Replace HTML line breaks
+              .slice(0, 4096) // Discord embed character limit
+          )
+          .setColor("#FFCC00")
+          .setURL(thread.threadUrl)
+          .setFooter({
+            text: `⭐ Thread ID: ${thread.threadId}`, // 📝 Added comment for clarity
+          })
+          .setImage(thread.thumbnail || null);
       }
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setLabel("🔗 View on 4chan")
-          .setStyle(ButtonStyle.Link)
-          .setURL(threadData.threadUrl),
-        new ButtonBuilder()
-          .setCustomId("prev_vp")
-          .setLabel("⬅️ Previous")
-          .setStyle(ButtonStyle.Primary)
-          .setDisabled(true), // Initially disabled
-        new ButtonBuilder()
-          .setCustomId("next_vp")
-          .setLabel("➡️ Next")
-          .setStyle(ButtonStyle.Primary)
-      );
+      function createButtons(index) {
+        return new ActionRowBuilder().addComponents(
+          new ButtonBuilder()
+            .setLabel("🔗 View on 4chan")
+            .setStyle(ButtonStyle.Link)
+            .setURL(threadList[index].threadUrl), // Update URL dynamically
+          new ButtonBuilder()
+            .setCustomId("prev_vp")
+            .setLabel("⬅️ Previous")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(index === 0), // Disable if first thread
+          new ButtonBuilder()
+            .setCustomId("next_vp")
+            .setLabel("➡️ Next")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(index === threadList.length - 1) // Disable if last thread
+        );
+      }
 
-      const message = await interaction.editReply({
-        embeds: [embed],
-        components: [row],
+      let message = await interaction.editReply({
+        embeds: [createEmbed(threadData)],
+        components: [createButtons(currentIndex)],
       });
 
-      // Button Interaction Collector
       const filter = (i) => i.user.id === interaction.user.id;
       const collector = message.createMessageComponentCollector({
         filter,
@@ -81,29 +78,16 @@ module.exports = {
           currentIndex--;
         }
 
-        const newThreadData = threadList[currentIndex];
+        threadData = threadList[currentIndex];
 
-        const updatedEmbed = new EmbedBuilder()
-          .setTitle(`🧵 ${newThreadData.subject}`)
-          .setDescription(formatText(newThreadData.comment))
-          .setColor("#FFCC00")
-          .setURL(newThreadData.threadUrl)
-          .setFooter({ text: `Thread ID: ${newThreadData.threadId}` });
-
-        if (newThreadData.thumbnail) {
-          updatedEmbed.setImage(newThreadData.thumbnail);
-        }
-
-        row.components[1].setDisabled(currentIndex === 0); // Disable 'Previous' on first
-        row.components[2].setDisabled(currentIndex === threadList.length - 1); // Disable 'Next' on last
-
-        await i.update({ embeds: [updatedEmbed], components: [row] });
+        await i.update({
+          embeds: [createEmbed(threadData)],
+          components: [createButtons(currentIndex)],
+        });
       });
 
       collector.on("end", async () => {
-        row.components[1].setDisabled(true);
-        row.components[2].setDisabled(true);
-        await interaction.editReply({ components: [row] });
+        await interaction.editReply({ components: [] });
       });
     } catch (error) {
       console.error("❌ Error fetching /vp/ threads:", error);
