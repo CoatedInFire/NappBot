@@ -1,10 +1,10 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
 const { database } = require("./utils/database");
-const commands = require("./commands");
+const commands = require("./commands"); // Import SlashCommandBuilder commands
 require("./server"); // Import Express server
 
-// Ensure environment variables
+// Ensure environment variables exist
 ["TOKEN", "CLIENT_ID"].forEach((envVar) => {
   if (!process.env[envVar]) {
     console.error(`❌ Missing environment variable: ${envVar}`);
@@ -14,16 +14,23 @@ require("./server"); // Import Express server
 
 const token = process.env.TOKEN;
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers, // ✅ Needed for .getUser()
+  ],
 });
+
+// ✅ Command map (fixing outdated lookup)
 const commandMap = new Map(commands.map((cmd) => [cmd.name, cmd]));
 
+// ✅ Bot is ready
 client.once("ready", () => console.log(`✅ Logged in as ${client.user.tag}`));
 
 client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isCommand()) return;
+  if (!interaction.isChatInputCommand()) return; // ✅ Supports only slash commands (fix)
 
-  const command = commands.find((cmd) => cmd.name === interaction.commandName);
+  const command = commandMap.get(interaction.commandName);
 
   if (!command) {
     await interaction.reply({
@@ -35,16 +42,11 @@ client.on("interactionCreate", async (interaction) => {
 
   try {
     console.log(`⚡ Executing: ${interaction.commandName}`);
-
-    // TEMP FIX: Make the bot reply with a placeholder response
-    await interaction.reply({
-      content: `✅ Command received: **${interaction.commandName}**`,
-      ephemeral: true,
-    });
+    await command.execute(interaction);
   } catch (error) {
     console.error(`❌ Error executing ${interaction.commandName}:`, error);
     await interaction.reply({
-      content: "❌ An error occurred!",
+      content: "❌ An error occurred while executing this command.",
       ephemeral: true,
     });
   }
@@ -52,6 +54,7 @@ client.on("interactionCreate", async (interaction) => {
 
 client.login(token);
 
+// ✅ Test database connection
 database
   .query("SELECT 1")
   .then(() => console.log("✅ Connected to MySQL!"))

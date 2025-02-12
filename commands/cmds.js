@@ -1,6 +1,10 @@
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+
 module.exports = {
-  name: "cmds",
-  description: "List all available commands.",
+  data: new SlashCommandBuilder()
+    .setName("cmds")
+    .setDescription("📜 List all available commands."),
+
   async execute(interaction, client) {
     try {
       const commands = await client.application.commands.fetch();
@@ -21,11 +25,11 @@ module.exports = {
         .setColor("#FFA500")
         .setTimestamp();
 
-      await interaction.reply({ embeds: [embed] });
+      await interaction.reply({ embeds: [embed], ephemeral: true });
     } catch (error) {
+      console.error("❌ Error fetching commands:", error);
       await interaction.reply({
-        content:
-          "⚠️ An error occurred while fetching commands. Please try again later.",
+        content: "⚠️ Failed to fetch commands. Try again later.",
         ephemeral: true,
       });
     }

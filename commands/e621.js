@@ -24,7 +24,14 @@ module.exports = {
 
     await interaction.deferReply(); // Defer reply while fetching data
 
-    const postDataArray = await fetchE621Images(tags, 10); // Fetch 10 posts randomly
+    let postDataArray;
+    try {
+      postDataArray = await fetchE621Images(tags, 10);
+    } catch (error) {
+      console.error("❌ Error fetching e621 data:", error);
+      return interaction.editReply("⚠️ Failed to fetch data. Try again later.");
+    }
+
     if (!postDataArray || postDataArray.length === 0) {
       return interaction.editReply("❌ No results found!");
     }
@@ -36,7 +43,14 @@ module.exports = {
       return new EmbedBuilder()
         .setTitle("🔞 e621 Image Result")
         .setDescription(
-          `**Artist(s):** ${postData.artists}\n**Characters:** ${postData.characters}`
+          `**Artist(s):** ${
+            postData.artists.length ? postData.artists.join(", ") : "N/A"
+          }\n` +
+            `**Characters:** ${
+              postData.characters.length
+                ? postData.characters.join(", ")
+                : "N/A"
+            }`
         )
         .setColor("#00549F")
         .setImage(
@@ -58,12 +72,12 @@ module.exports = {
           .setStyle(ButtonStyle.Link)
           .setURL(postDataArray[currentIndex].postUrl),
         new ButtonBuilder()
-          .setCustomId("prev")
+          .setCustomId(`prev_${interaction.id}`)
           .setLabel("⬅️ Previous")
           .setStyle(ButtonStyle.Primary)
           .setDisabled(currentIndex === 0),
         new ButtonBuilder()
-          .setCustomId("next")
+          .setCustomId(`next_${interaction.id}`)
           .setLabel("➡️ Next")
           .setStyle(ButtonStyle.Primary)
           .setDisabled(currentIndex === postDataArray.length - 1)
@@ -83,9 +97,9 @@ module.exports = {
     });
 
     collector.on("collect", async (i) => {
-      if (i.customId === "next") {
+      if (i.customId === `next_${interaction.id}`) {
         currentIndex = Math.min(currentIndex + 1, postDataArray.length - 1);
-      } else if (i.customId === "prev") {
+      } else if (i.customId === `prev_${interaction.id}`) {
         currentIndex = Math.max(currentIndex - 1, 0);
       }
 
@@ -93,6 +107,11 @@ module.exports = {
         embeds: [createEmbed(postDataArray[currentIndex])],
         components: [createRow()],
       });
+
+      // Stop collector if at first or last image
+      if (currentIndex === 0 || currentIndex === postDataArray.length - 1) {
+        collector.stop();
+      }
     });
 
     collector.on("end", async () => {

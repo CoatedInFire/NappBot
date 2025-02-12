@@ -1,8 +1,11 @@
-const { getUserPreference, setUserPreference } = require("../utils/database");
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { getUserPreference } = require("../utils/database");
 
 module.exports = {
-  name: "settings",
-  description: "View your saved settings.",
+  data: new SlashCommandBuilder()
+    .setName("settings")
+    .setDescription("⚙️ View your saved settings."),
+
   async execute(interaction) {
     try {
       const userId = interaction.user.id;
@@ -10,7 +13,9 @@ module.exports = {
 
       const embed = new EmbedBuilder()
         .setTitle("⚙️ Your Settings")
-        .setDescription(`**Sex Preference:** ${preference}`)
+        .setDescription(
+          `**Sex Preference:** ${preference ? preference : "Not set"}`
+        )
         .setColor("#3498db")
         .setFooter({
           text: `Requested by ${interaction.user.tag}`,
@@ -20,6 +25,7 @@ module.exports = {
 
       await interaction.reply({ embeds: [embed], ephemeral: true });
     } catch (error) {
+      console.error("❌ Error fetching user settings:", error);
       await interaction.reply({
         content:
           "⚠️ An error occurred while fetching your settings. Please try again later.",

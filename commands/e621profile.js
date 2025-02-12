@@ -17,7 +17,16 @@ module.exports = {
 
     await interaction.deferReply(); // Defer reply while fetching data
 
-    const profileData = await fetchE621User(username);
+    let profileData;
+    try {
+      profileData = await fetchE621User(username);
+    } catch (error) {
+      console.error("❌ Error fetching e621 user:", error);
+      return interaction.editReply(
+        "⚠️ Failed to fetch user data. Try again later."
+      );
+    }
+
     if (!profileData) {
       return interaction.editReply("❌ User not found or API error.");
     }
@@ -28,24 +37,32 @@ module.exports = {
       .setColor("#00549F")
       .setThumbnail("https://e621.net/static/logo.png")
       .addFields(
-        { name: "🆔 User ID", value: profileData.id.toString(), inline: true },
-        { name: "📅 Joined", value: profileData.joined, inline: true },
+        {
+          name: "🆔 User ID",
+          value: profileData.id?.toString() || "N/A",
+          inline: true,
+        },
+        { name: "📅 Joined", value: profileData.joined || "N/A", inline: true },
         {
           name: "📤 Uploads",
-          value: profileData.uploads.toString(),
+          value: profileData.uploads?.toString() || "0",
           inline: true,
         },
         {
           name: "📝 Tag Edits",
-          value: profileData.tagEdits.toString(),
+          value: profileData.tagEdits?.toString() || "0",
           inline: true,
         },
         {
           name: "❤️ Favorites",
-          value: profileData.favorites.toString(),
+          value: profileData.favorites?.toString() || "0",
           inline: true,
         },
-        { name: "🔧 Notes", value: profileData.notes.toString(), inline: true }
+        {
+          name: "🔧 Notes",
+          value: profileData.notes?.toString() || "0",
+          inline: true,
+        }
       )
       .setFooter({
         text: `Requested by ${interaction.user.tag}`,

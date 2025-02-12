@@ -1,27 +1,27 @@
-const { EmbedBuilder } = require("discord.js");
-const { getUserPreference } = require("../utils/database"); // Assumes a function to get user preferences
+const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { getUserPreference } = require("../utils/database");
 
 module.exports = {
-  name: "fuck",
-  description: "Engage in a steamy interaction with another user.",
-  options: [
-    {
-      name: "user",
-      type: 6, // USER type
-      description: "The user you want to interact with",
-      required: true,
-    },
-    {
-      name: "pose",
-      type: 3, // STRING type
-      description: "Choose a position (behind/front)",
-      required: false,
-      choices: [
-        { name: "Behind", value: "behind" },
-        { name: "Front", value: "front" },
-      ],
-    },
-  ],
+  data: new SlashCommandBuilder()
+    .setName("fuck")
+    .setDescription("🔥 Engage in a steamy interaction with another user.")
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("The user you want to interact with")
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("pose")
+        .setDescription("Choose a position (behind/front)")
+        .setRequired(false)
+        .addChoices(
+          { name: "Behind", value: "behind" },
+          { name: "Front", value: "front" }
+        )
+    ),
+
   async execute(interaction) {
     const sender = interaction.user;
     const recipient = interaction.options.getUser("user");
@@ -125,6 +125,7 @@ module.exports = {
         ],
       },
     };
+    
     if (
       !images[type] ||
       !images[type][pose] ||
