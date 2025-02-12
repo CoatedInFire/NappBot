@@ -1,11 +1,12 @@
+const { SlashCommandBuilder } = require("discord.js");
+
 module.exports = {
-  data: {
-    name: "cmds",
-    description: "List all available commands.",
-  },
+  data: new SlashCommandBuilder()
+    .setName("cmds")
+    .setDescription("List all available commands."),
+
   async execute(interaction) {
     try {
-      // Ensure the client is ready before using application commands
       if (!interaction.client.application) {
         return interaction.reply({
           content: "❌ Application commands are not available.",
@@ -13,7 +14,6 @@ module.exports = {
         });
       }
 
-      // Fetch registered commands
       const commands = await interaction.client.application.commands.fetch();
 
       if (!commands.size) {
@@ -23,14 +23,13 @@ module.exports = {
         });
       }
 
-      // Create a response message listing all commands
       const commandList = commands
         .map((cmd) => `\`/${cmd.name}\` - ${cmd.description}`)
         .join("\n");
 
       await interaction.reply({
         content: `📜 **Available Commands:**\n${commandList}`,
-        ephemeral: true, // Use flags instead later
+        ephemeral: true, // You can change this to `false` if you want everyone to see it
       });
     } catch (error) {
       console.error("❌ Error fetching commands:", error);
