@@ -8,9 +8,11 @@ const WALLTAKER_API_KEY = process.env.WALLTAKERAPIKEY;
  * @returns {Promise<Object|null>} Image data or null if none found.
  */
 async function fetchWalltakerImage(feedId) {
-  const apiUrl = `https://walltaker.joi.how/api/links/${feedId}`;
+  const apiUrl = `https://walltaker.joi.how/api/links/${feedId}.json`; // ✅ Fixed URL
 
   try {
+    console.log(`🔍 Fetching Walltaker feed: ${apiUrl}`);
+
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
@@ -19,18 +21,27 @@ async function fetchWalltakerImage(feedId) {
       },
     });
 
+    console.log(
+      `🌐 Response Status: ${response.status} ${response.statusText}`
+    );
+
     if (!response.ok) {
       throw new Error(`Walltaker API error: ${response.statusText}`);
     }
 
     const data = await response.json();
+    console.log("📥 Received Data:", data);
 
-    if (!data.image_url) return null; // No image found
+    if (!data.post_url) {
+      // ✅ Fixed the wrong key
+      console.warn("⚠️ No image found in Walltaker feed.");
+      return null;
+    }
 
     return {
       feedId,
-      imageUrl: data.image_url,
-      sourceUrl: `https://walltaker.joi.how/${feedId}`,
+      imageUrl: data.post_url, // ✅ Fixed the wrong key
+      sourceUrl: `https://walltaker.joi.how/links/${feedId}`,
     };
   } catch (error) {
     console.error(
