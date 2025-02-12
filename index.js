@@ -102,19 +102,20 @@ async function postWalltakerImages() {
 
         await saveLastPostedImage(guild_id, imageUrl); // ✅ Save to MySQL to prevent duplicates
 
+        // ✅ Determine the user who changed the image
+        const updatedByUser = lastUpdatedBy?.trim() || "anon"; // Uses "anon" if empty
+
         // ✅ Create Embed
         const embed = new EmbedBuilder()
           .setTitle(`🖼️ Walltaker Image for Feed ${feed_id}`)
           .setDescription(
-            "🔄 **Automatic Detection** - A new wallpaper has been set!"
-          ) // Automatic detection notice
+            "🔄 **Automatic Detection** - A new image has been set!"
+          )
           .setImage(imageUrl)
           .setColor("#3498DB")
           .setFooter({
-            text: lastUpdatedBy
-              ? `Wallpaper changed by: ${lastUpdatedBy}`
-              : "Wallpaper changer unknown",
-            iconURL: "https://cdn-icons-png.flaticon.com/512/1828/1828490.png",
+            text: `Image changed by: ${lastUpdatedBy} | Requested by ${interaction.user.tag}`,
+            iconURL: interaction.user.displayAvatarURL(),
           });
 
         // ✅ Create Button
@@ -172,7 +173,10 @@ client.login(process.env.TOKEN);
 
 database
   .query("SELECT 1")
-  .then(() => console.log("✅ Connected to MySQL!"))
+  .then(() => {
+    console.log("✅ Connected to MySQL!");
+    console.log("✅ Bot is fully loaded and ready to go!"); // Final confirmation
+  })
   .catch((err) => {
     console.error("❌ MySQL Connection Error:", err);
     process.exit(1);

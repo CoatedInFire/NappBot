@@ -1,7 +1,5 @@
 const fetch = require("node-fetch");
 
-const WALLTAKER_API_KEY = process.env.WALLTAKERAPIKEY;
-
 /**
  * Fetch the latest image from a Walltaker feed.
  * @param {string} feedId - The Walltaker feed ID.
@@ -16,7 +14,6 @@ async function fetchWalltakerImage(feedId) {
     const response = await fetch(apiUrl, {
       method: "GET",
       headers: {
-        Authorization: WALLTAKER_API_KEY,
         "User-Agent": "NappBot/1.0 (by Napp on Discord)",
       },
     });
@@ -32,16 +29,17 @@ async function fetchWalltakerImage(feedId) {
     const data = await response.json();
     console.log("📥 Received Data:", data);
 
-    if (!data.post_url) {
+    if (!data.post_url && !data.post_thumbnail_url) {
       console.warn("⚠️ No image found in Walltaker feed.");
       return null;
     }
 
     return {
       feedId,
-      imageUrl: data.post_url, // ✅ Fixed key
+      imageUrl: data.post_url || data.post_thumbnail_url, // ✅ Use thumbnail as a fallback
       sourceUrl: `https://walltaker.joi.how/links/${feedId}`,
-      lastUpdatedBy: data.owner ?? "Unknown User", // ✅ Added wallpaper changer info
+      lastUpdatedBy:
+        data.set_by && data.set_by.trim() !== "" ? data.set_by : "anon", // ✅ Fix user display
     };
   } catch (error) {
     console.error(

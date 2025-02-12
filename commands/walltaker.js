@@ -6,7 +6,7 @@ const {
   ButtonStyle,
 } = require("discord.js");
 const { fetchWalltakerImage } = require("../utils/fetchWalltaker");
-const { database } = require("../utils/database"); // Ensure database is imported
+const { database } = require("../utils/database"); // ✅ Import database
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -26,53 +26,57 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply(); // Defer while fetching
+    await interaction.deferReply({ ephemeral: true }); // ✅ Ephemeral confirmation
 
-    const feedId = interaction.options.getString("feed_id") || "33359"; // Default feed ID
+    const guildId = interaction.guild.id;
+    let feedId = interaction.options.getString("feed_id");
     let targetChannel = interaction.options.getChannel("channel");
 
-    // If no channel is specified, fetch from database
-    if (!targetChannel) {
+    // ✅ Fetch from database if no feed ID is provided
+    if (!feedId) {
       const [settings] = await database.execute(
-        "SELECT channel_id FROM walltaker_settings WHERE guild_id = ? LIMIT 1",
-        [interaction.guild.id]
+        "SELECT feed_id, channel_id FROM walltaker_settings WHERE guild_id = ? LIMIT 1",
+        [guildId]
       );
 
       if (!settings.length) {
-        return interaction.editReply(
-          "❌ No Walltaker channel is set for this server!"
-        );
+        return interaction.editReply({
+          content:
+            "❌ No Walltaker feed is set for this server! Use `/setwalltaker` first.",
+          ephemeral: true,
+        });
       }
 
-      targetChannel = await interaction.client.channels.fetch(
-        settings[0].channel_id
-      );
+      feedId = settings[0].feed_id;
       if (!targetChannel) {
-        return interaction.editReply(
-          "❌ The saved Walltaker channel is invalid or missing permissions!"
-        );
+        targetChannel = await interaction.client.channels
+          .fetch(settings[0].channel_id)
+          .catch(() => null);
       }
     }
+
+    // ✅ Default to command channel if database channel is invalid
+    if (!targetChannel) targetChannel = interaction.channel;
 
     const imageData = await fetchWalltakerImage(feedId);
-
     if (!imageData) {
-      return interaction.editReply(
-        "❌ No image found for this Walltaker feed."
-      );
+      return interaction.editReply({
+        content: "❌ No image found for this Walltaker feed.",
+        ephemeral: true,
+      });
     }
 
-    // Create Embed
+    // ✅ Create Embed
     const embed = new EmbedBuilder()
       .setTitle(`🖼️ Walltaker Image for Feed ${feedId}`)
       .setImage(imageData.imageUrl)
       .setColor("#3498DB")
       .setFooter({
-        text: `Requested by ${interaction.user.tag}`,
-        iconURL: interaction.user.displayAvatarURL(),
+        text: `Image set by: ${imageData.lastUpdatedBy ?? "anon"}`,
+        iconURL: "https://cdn-icons-png.flaticon.com/512/1828/1828490.png",
       });
 
-    // Create Button
+    // ✅ Create Button
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setLabel("🔗 View on Walltaker")
@@ -80,9 +84,12 @@ module.exports = {
         .setURL(imageData.sourceUrl)
     );
 
-    // Send message to the chosen channel
+    // ✅ Send message to the chosen channel
     await targetChannel.send({ embeds: [embed], components: [row] });
 
-    return interaction.editReply(`✅ Image posted in ${targetChannel}.`);
+    return interaction.editReply({
+      content: `✅ Image posted in ${targetChannel}.`,
+      ephemeral: true,
+    });
   },
 };
