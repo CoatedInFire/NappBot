@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { Client, GatewayIntentBits } = require("discord.js");
-const { database } = require("./database");
+const { database } = require("./utils/database");
 const commands = require("./commands");
 require("./server"); // Import Express server
 
