@@ -14,13 +14,18 @@ module.exports = {
     .addStringOption((option) =>
       option
         .setName("tags")
-        .setDescription("Enter search tags separated by spaces")
+        .setDescription("Enter search tags separated by spaces (optional)")
         .setRequired(false)
     ),
 
   async execute(interaction) {
     const sender = interaction.user;
     const tags = interaction.options.getString("tags")?.split(" ") || [];
+
+    // Default behavior when no tags are provided
+    if (tags.length === 0) {
+      tags.push("score:>=100"); // Fetch from top-rated posts
+    }
 
     await interaction.deferReply(); // Defer reply while fetching data
 
@@ -44,14 +49,14 @@ module.exports = {
         .setTitle("🔞 e621 Image Result")
         .setDescription(
           `**Artist(s):** ${
-            Array.isArray(postData.artists) && postData.artists.length
+            postData.artists && postData.artists.length
               ? postData.artists.join(", ")
-              : "N/A"
+              : "*Unknown*"
           }\n` +
             `**Characters:** ${
-              Array.isArray(postData.characters) && postData.characters.length
+              postData.characters && postData.characters.length
                 ? postData.characters.join(", ")
-                : "N/A"
+                : "*Unknown*"
             }`
         )
         .setColor("#00549F")
@@ -109,11 +114,6 @@ module.exports = {
         embeds: [createEmbed(postDataArray[currentIndex])],
         components: [createRow()],
       });
-
-      // Stop collector if at first or last image
-      if (currentIndex === 0 || currentIndex === postDataArray.length - 1) {
-        collector.stop();
-      }
     });
 
     collector.on("end", async () => {

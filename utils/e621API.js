@@ -1,9 +1,35 @@
-const fetch = require("node-fetch"); // Ensure node-fetch is installed
+const fetch = require("node-fetch");
 
-// Fetch e621 Images
+// e621 Default Blacklist
+const DEFAULT_BLACKLIST = [
+  "cub",
+  "toddlercon",
+  "shota",
+  "loli",
+  "gore",
+  "scat",
+  "watersports",
+  "vore",
+];
+
+/**
+ * Fetch e621 images based on search tags.
+ * If no tags are given, pulls from top 100 latest images with a score >= 100.
+ * @param {Array} tags - Search tags.
+ * @param {number} count - Number of images to return.
+ * @returns {Array} - Array of image data objects.
+ */
 async function fetchE621Images(tags = [], count = 10) {
-  const query = tags.join("+");
-  const url = `https://e621.net/posts.json?tags=${query}&limit=100`; // Fetches up to 100 posts
+  // If no tags, default to high-rated images
+  if (tags.length === 0) {
+    tags.push("score:>=100");
+  }
+
+  // Apply blacklist filtering
+  const query = [...tags, ...DEFAULT_BLACKLIST.map((tag) => `-${tag}`)].join(
+    "+"
+  );
+  const url = `https://e621.net/posts.json?tags=${query}&limit=100`;
   const apiKey = process.env.E621_API_KEY;
 
   if (!apiKey) {
@@ -41,7 +67,7 @@ async function fetchE621Images(tags = [], count = 10) {
       ];
     }
 
-    // Select the first `count` shuffled posts
+    // Select first `count` shuffled posts
     const selectedPosts = shuffledPosts.slice(
       0,
       Math.min(count, shuffledPosts.length)
@@ -50,16 +76,13 @@ async function fetchE621Images(tags = [], count = 10) {
     return selectedPosts.map((post) => ({
       postId: post.id,
       postUrl: `https://e621.net/posts/${post.id}`,
-      imageUrl: post.file?.url || null, // NULL if no image (avoids sending broken URLs)
-      thumbnail: post.preview?.url || null, // NULL instead of a placeholder
-      artists:
-        Array.isArray(post.tags?.artist) && post.tags.artist.length > 0
-          ? post.tags.artist.join(", ")
-          : "Unknown",
+      imageUrl: post.file?.url || null, // NULL if no image (avoids broken embeds)
+      thumbnail: post.preview?.url || null, // NULL instead of placeholder
+      artists: post.tags?.artist?.length > 0 ? post.tags.artist : ["Unknown"], // Properly extracts artist
       characters:
-        Array.isArray(post.tags?.character) && post.tags.character.length > 0
-          ? post.tags.character.slice(0, 3).join(", ")
-          : "No characters tagged",
+        post.tags?.character?.length > 0
+          ? post.tags.character.slice(0, 3)
+          : ["No characters tagged"], // Limits to 3
       score: post.score?.total || 0,
       favCount: post.fav_count || 0,
     }));
@@ -69,7 +92,11 @@ async function fetchE621Images(tags = [], count = 10) {
   }
 }
 
-// Fetch e621 User Profile
+/**
+ * Fetch e621 user profile data.
+ * @param {string} username - e621 username.
+ * @returns {Object} - User profile data.
+ */
 async function fetchE621User(username) {
   const url = `https://e621.net/users.json?search[name_matches]=${username}`;
   const apiKey = process.env.E621_API_KEY;
