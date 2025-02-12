@@ -6,6 +6,7 @@ const {
   ButtonStyle,
 } = require("discord.js");
 const { fetchVPThreads } = require("../utils/fetchVPThreads");
+const he = require("he"); // Import HTML entity decoder
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -22,11 +23,14 @@ module.exports = {
       }
 
       let currentIndex = 0;
+
+      // Function to decode HTML entities properly
       const formatText = (text) => {
-        return text
+        return he
+          .decode(text) // Convert all HTML entities (handles everything)
           .replace(/<br\s*\/?>/gi, "\n") // Convert <br> to newlines
           .replace(/<\/?[^>]+(>|$)/g, "") // Remove all remaining HTML tags
-          .trim(); // Trim any leading/trailing spaces
+          .trim(); // Trim spaces
       };
 
       const threadData = threadList[currentIndex];
