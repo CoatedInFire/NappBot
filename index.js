@@ -80,13 +80,11 @@ async function postWalltakerImages() {
 
       const imageData = await fetchWalltakerImage(feed_id);
       if (!imageData) {
-        console.log(
-          `⚠️ No image found in Walltaker feed for guild ${guild_id}`
-        );
+        console.log(`⚠️ No image found in Walltaker feed for guild ${guild_id}`);
         continue;
       }
 
-      const { imageUrl, sourceUrl } = imageData;
+      const { imageUrl, sourceUrl, lastUpdatedBy } = imageData; // Added `lastUpdatedBy`
 
       // ✅ Check if image is new
       if (lastPostedImages[guild_id] !== imageUrl) {
@@ -99,8 +97,15 @@ async function postWalltakerImages() {
         // ✅ Create Embed
         const embed = new EmbedBuilder()
           .setTitle(`🖼️ Walltaker Image for Feed ${feed_id}`)
+          .setDescription("🔄 **Automatic Detection** - A new wallpaper has been set!") // Automatic detection notice
           .setImage(imageUrl)
-          .setColor("#3498DB");
+          .setColor("#3498DB")
+          .setFooter({
+            text: lastUpdatedBy
+              ? `Wallpaper changed by: ${lastUpdatedBy}`
+              : "Wallpaper changer unknown",
+            iconURL: "https://cdn-icons-png.flaticon.com/512/1828/1828490.png", // Generic icon
+          });
 
         // ✅ Create Button
         const row = new ActionRowBuilder().addComponents(
@@ -149,6 +154,7 @@ async function monitorWalltakerChanges() {
     }
   }
 }
+
 
 client.once("ready", async () => {
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
