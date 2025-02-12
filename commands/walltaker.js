@@ -72,8 +72,8 @@ module.exports = {
       .setImage(imageData.imageUrl)
       .setColor("#3498DB")
       .setFooter({
-        text: `Image set by: ${imageData.lastUpdatedBy ?? "anon"}`,
-        iconURL: "https://cdn-icons-png.flaticon.com/512/1828/1828490.png",
+        text: `Image changed by: ${imageData.lastUpdatedBy} | Requested by ${interaction.user.tag}`,
+        iconURL: interaction.user.displayAvatarURL(),
       });
 
     // ✅ Create Button

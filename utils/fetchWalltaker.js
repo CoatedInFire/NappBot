@@ -29,14 +29,18 @@ async function fetchWalltakerImage(feedId) {
     const data = await response.json();
     console.log("📥 Received Data:", data);
 
-    if (!data.post_url && !data.post_thumbnail_url) {
+    if (!data.post_url) {
       console.warn("⚠️ No image found in Walltaker feed.");
       return null;
     }
 
+    // ✅ Trim URL to remove any unwanted characters
+    const imageUrl = data.post_url ? data.post_url.trim() : null;
+    console.log(`✅ Processed Walltaker Image URL: ${imageUrl}`);
+
     return {
       feedId,
-      imageUrl: data.post_url || data.post_thumbnail_url, // ✅ Use thumbnail as a fallback
+      imageUrl,
       sourceUrl: `https://walltaker.joi.how/links/${feedId}`,
       lastUpdatedBy:
         data.set_by && data.set_by.trim() !== "" ? data.set_by : "anon", // ✅ Fix user display

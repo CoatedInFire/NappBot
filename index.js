@@ -91,19 +91,23 @@ async function postWalltakerImages() {
       }
 
       const { imageUrl, sourceUrl, lastUpdatedBy } = imageData;
+      const cleanImageUrl = imageUrl ? imageUrl.trim() : null;
 
       // ✅ Fetch last posted image from MySQL
       const lastPosted = await getLastPostedImage(guild_id);
 
-      if (lastPosted !== imageUrl) {
+      // ✅ Check if image is new
+      if (!lastPosted || lastPosted !== cleanImageUrl) {
         console.log(
           `🆕 New Walltaker image detected for guild ${guild_id}, sending now!`
         );
 
-        await saveLastPostedImage(guild_id, imageUrl); // ✅ Save to MySQL to prevent duplicates
+        await saveLastPostedImage(guild_id, cleanImageUrl);
+        lastPostedImages[guild_id] = cleanImageUrl;
 
         // ✅ Determine the user who changed the image
-        const updatedByUser = lastUpdatedBy?.trim() || "anon"; // Uses "anon" if empty
+        const updatedByUser =
+          lastUpdatedBy && lastUpdatedBy.trim() !== "" ? lastUpdatedBy : "anon";
 
         // ✅ Create Embed
         const embed = new EmbedBuilder()
@@ -111,11 +115,11 @@ async function postWalltakerImages() {
           .setDescription(
             "🔄 **Automatic Detection** - A new image has been set!"
           )
-          .setImage(imageUrl)
+          .setImage(cleanImageUrl)
           .setColor("#3498DB")
           .setFooter({
-            text: `Image changed by: ${lastUpdatedBy} | Requested by ${interaction.user.tag}`,
-            iconURL: interaction.user.displayAvatarURL(),
+            text: `Image changed by: ${updatedByUser}`,
+            iconURL: "https://cdn-icons-png.flaticon.com/512/1828/1828490.png",
           });
 
         // ✅ Create Button
