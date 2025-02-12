@@ -1,11 +1,17 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { fetchVPThreads } = require("../utils/fetchVPThreads"); // Ensure this function exists
+const {
+  SlashCommandBuilder,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require("discord.js");
+const { fetchVPThreads } = require("../utils/fetchVPThreads");
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("vp")
     .setDescription("Fetches a random /vp/ thread from 4chan."),
-  
+
   async execute(interaction) {
     try {
       await interaction.deferReply();
@@ -16,11 +22,18 @@ module.exports = {
       }
 
       let currentIndex = 0;
+      const formatText = (text) => {
+        return text
+          .replace(/<br\s*\/?>/gi, "\n") // Convert <br> to newlines
+          .replace(/<\/?[^>]+(>|$)/g, "") // Remove all remaining HTML tags
+          .trim(); // Trim any leading/trailing spaces
+      };
+
       const threadData = threadList[currentIndex];
 
       const embed = new EmbedBuilder()
-        .setTitle("🧵 Random /vp/ Thread")
-        .setDescription(threadData.comment)
+        .setTitle(`🧵 ${threadData.subject}`)
+        .setDescription(formatText(threadData.comment))
         .setColor("#FFCC00")
         .setURL(threadData.threadUrl)
         .setFooter({ text: `Thread ID: ${threadData.threadId}` });
@@ -67,8 +80,8 @@ module.exports = {
         const newThreadData = threadList[currentIndex];
 
         const updatedEmbed = new EmbedBuilder()
-          .setTitle("🧵 Random /vp/ Thread")
-          .setDescription(newThreadData.comment)
+          .setTitle(`🧵 ${newThreadData.subject}`)
+          .setDescription(formatText(newThreadData.comment))
           .setColor("#FFCC00")
           .setURL(newThreadData.threadUrl)
           .setFooter({ text: `Thread ID: ${newThreadData.threadId}` });
