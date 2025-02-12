@@ -346,16 +346,18 @@ client.on("interactionCreate", async (interaction) => {
 
       // Fetch user preference for recipient
       let type = await getUserPreference(recipient.id);
+      const validTypes = ["male", "female"];
 
       // If no preference is set, pick randomly
-      if (!type || !["male", "female"].includes(type)) {
-        const options = ["male", "female"];
-        type = options[Math.floor(Math.random() * options.length)];
+      if (!type || !validTypes.includes(type)) {
+        type = validTypes[Math.floor(Math.random() * validTypes.length)];
       }
 
+      // Get pose from user input or select randomly
       let pose = interaction.options.getString("pose");
       const poseOptions = ["behind", "front"];
-      if (!pose) {
+
+      if (!pose || !poseOptions.includes(pose)) {
         pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
       }
 
@@ -428,20 +430,41 @@ client.on("interactionCreate", async (interaction) => {
         },
       };
 
-      if (!images[type] || !images[type][pose]) {
+      if (
+        !images[type] ||
+        !images[type][pose] ||
+        images[type][pose].length === 0
+      ) {
         console.error(`❌ Invalid type or pose: ${type}, ${pose}`);
         return interaction.reply({
-          content: "❌ Invalid selection!",
+          content: "❌ Something went wrong while choosing the image!",
           ephemeral: true,
         });
       }
 
+      // Properly randomized selection
       const randomIndex = Math.floor(Math.random() * images[type][pose].length);
       const image = images[type][pose][randomIndex];
 
+      // Randomized messages for variety
+      const descriptions = [
+        `${sender} is having a steamy session with ${recipient}! 🔥`,
+        `${recipient} and ${sender} are enjoying some quality time together. 😏`,
+        `Things are getting intense between ${sender} and ${recipient}! 💋`,
+        `${sender} and ${recipient} are lost in passion! 💕`,
+      ];
+
+      const randomDescription =
+        descriptions[Math.floor(Math.random() * descriptions.length)];
+
+      // Debugging logs (to verify randomness)
+      console.log(`Type: ${type}, Pose: ${pose}`);
+      console.log(`Selected Image Index: ${randomIndex}`);
+
+      // Embed
       const embed = new EmbedBuilder()
         .setTitle("🔥 Steamy Interaction!")
-        .setDescription(`${sender} is having fun with ${recipient}! 😏`)
+        .setDescription(randomDescription)
         .setImage(image)
         .setColor("#FF007F")
         .setTimestamp();
@@ -500,17 +523,19 @@ client.on("interactionCreate", async (interaction) => {
           `Hug alert! 🚨 ${sender} just sent ${recipient} a hug! 🫂`,
           `Nothing beats a good hug! ${sender} embraces ${recipient}! 💞`,
         ];
-        const randomGif = hugGifs[Math.floor(Math.random() * hugGifs.length)];
-
-        const embed = new EmbedBuilder()
-          .setTitle("🤗 Hug Alert!")
-          .setDescription(`${sender} wraps ${recipient} in a big warm hug! 🤗`)
-          .setImage(customGif || randomGif)
-          .setColor("#FFC0CB")
-          .setTimestamp();
-
-        await interaction.reply({ embeds: [embed] });
+        embedDescription =
+          hugMessages[Math.floor(Math.random() * hugMessages.length)];
+        gifToUse = randomGif;
       }
+
+      const embed = new EmbedBuilder()
+        .setTitle("🤗 Hug Alert!")
+        .setDescription(embedDescription)
+        .setImage(gifToUse)
+        .setColor("#FFC0CB")
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
     }
 
     // Lick Command
@@ -542,11 +567,31 @@ client.on("interactionCreate", async (interaction) => {
         "https://static1.e621.net/data/2f/6f/2f6f03e6ec4bbd44be64764a81eca17b.jpg",
         "https://static1.e621.net/data/25/05/2505deaea6668e8247a6b3b9b5168c27.gif",
       ];
+
+      const lickMessages = [
+        `🤭 ${sender} playfully licks ${recipient}!`,
+        `Tastes good? ${sender} gives ${recipient} a big lick! 😆`,
+        `${sender} can't resist and licks ${recipient}! 🤭`,
+        `Slurp! ${sender} gives ${recipient} a long lick! 👀`,
+        `${sender} gives ${recipient} a sweet little lick! 💖`,
+      ];
+
+      // Ensure proper randomization
       const randomGif = lickGifs[Math.floor(Math.random() * lickGifs.length)];
+      const randomMessage =
+        lickMessages[Math.floor(Math.random() * lickMessages.length)];
+
+      // Debugging to check randomness
+      console.log(`Lick GIF Index: ${lickGifs.indexOf(randomGif)}`); // Logs the index chosen
+      console.log(`Lick Message Index: ${lickMessages.indexOf(randomMessage)}`);
 
       const embed = new EmbedBuilder()
         .setTitle("👅 Lick Alert!")
-        .setDescription(`${sender} licks ${recipient}!`)
+        .setDescription(
+          customGif
+            ? `${sender} sends a special lick to ${recipient}! 👅`
+            : randomMessage
+        )
         .setImage(customGif || randomGif)
         .setColor("#FF007F")
         .setTimestamp();
@@ -586,12 +631,30 @@ client.on("interactionCreate", async (interaction) => {
         "https://static1.e621.net/data/97/d8/97d87726964dfb3c14aec58b7c2450a6.gif",
         "https://static1.e621.net/data/16/4a/164ab3550d9bcf0a8e693963a7b64c0c.gif",
       ];
+
+      const kissMessages = [
+        `${sender} gives ${recipient} a sweet and loving kiss! 💞`,
+        `😘 ${sender} kisses ${recipient} with love!`,
+        `${sender} plants a gentle kiss on ${recipient}! So cute! 🥰`,
+        `Smooch! ${sender} gives ${recipient} a passionate kiss! 😍`,
+        `${sender} can't resist and kisses ${recipient} on the cheek! 💕`,
+      ];
+
+      // Properly randomized selection
       const randomGif = kissGifs[Math.floor(Math.random() * kissGifs.length)];
+      const randomMessage =
+        kissMessages[Math.floor(Math.random() * kissMessages.length)];
+
+      // Debugging logs (to check randomness)
+      console.log(`Kiss GIF Index: ${kissGifs.indexOf(randomGif)}`);
+      console.log(`Kiss Message Index: ${kissMessages.indexOf(randomMessage)}`);
 
       const embed = new EmbedBuilder()
         .setTitle("💋 Kiss Alert!")
         .setDescription(
-          `${sender} gives ${recipient} a sweet and loving kiss! 💞`
+          customGif
+            ? `${sender} sends a special kiss to ${recipient}! 💖`
+            : randomMessage
         )
         .setImage(customGif || randomGif)
         .setColor("#FF69B4")
@@ -761,7 +824,9 @@ app.get("/", (req, res) => {
   res.send("Bot is alive!");
 });
 
-databasePool.query("SELECT 1").then(() => console.log("✅ Connected to MySQL!"));
+databasePool
+  .query("SELECT 1")
+  .then(() => console.log("✅ Connected to MySQL!"));
 
 // Hosting Service that requires a Web Server (Replit, Heroku)
 const port = process.env.PORT || 3000;
