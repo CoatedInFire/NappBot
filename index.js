@@ -1,10 +1,11 @@
 require("dotenv").config();
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, Collection, GatewayIntentBits } = require("discord.js");
+const fs = require("fs");
+const path = require("path");
 const { database } = require("./utils/database");
-const commands = require("./commands"); // Import SlashCommandBuilder commands
-require("./server"); // Import Express server
+require("./server"); // Express Server
 
-// Ensure environment variables exist
+// Ensure required environment variables
 ["TOKEN", "CLIENT_ID"].forEach((envVar) => {
   if (!process.env[envVar]) {
     console.error(`❌ Missing environment variable: ${envVar}`);
@@ -12,47 +13,44 @@ require("./server"); // Import Express server
   }
 });
 
-const token = process.env.TOKEN;
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMembers, // ✅ Needed for .getUser()
+    GatewayIntentBits.GuildMembers, // Needed for user lookups
   ],
 });
 
-// ✅ Command map (fixing outdated lookup)
-const commandMap = new Map(commands.map((cmd) => [cmd.name, cmd]));
+// ✅ Load commands from /commands and store them in client.commands
+client.commands = new Collection();
+const commandFiles = fs
+  .readdirSync("./commands")
+  .filter((file) => file.endsWith(".js"));
 
-// ✅ Bot is ready
-client.once("ready", () => console.log(`✅ Logged in as ${client.user.tag}`));
-
-client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isChatInputCommand()) return; // ✅ Supports only slash commands (fix)
-
-  const command = commandMap.get(interaction.commandName);
-
-  if (!command) {
-    await interaction.reply({
-      content: "❌ Command not found!",
-      ephemeral: true,
-    });
-    return;
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  if (command.data && command.execute) {
+    client.commands.set(command.data.name, command);
+  } else {
+    console.warn(`⚠️ Skipping invalid command file: ${file}`);
   }
+}
 
-  try {
-    console.log(`⚡ Executing: ${interaction.commandName}`);
-    await command.execute(interaction);
-  } catch (error) {
-    console.error(`❌ Error executing ${interaction.commandName}:`, error);
-    await interaction.reply({
-      content: "❌ An error occurred while executing this command.",
-      ephemeral: true,
-    });
+// ✅ Load events from /events and register them
+const eventFiles = fs
+  .readdirSync("./events")
+  .filter((file) => file.endsWith(".js"));
+for (const file of eventFiles) {
+  const event = require(`./events/${file}`);
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args, client));
+  } else {
+    client.on(event.name, (...args) => event.execute(...args, client));
   }
-});
+}
 
-client.login(token);
+// ✅ Log in
+client.login(process.env.TOKEN);
 
 // ✅ Test database connection
 database
