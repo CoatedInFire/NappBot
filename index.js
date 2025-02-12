@@ -9,6 +9,10 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
+const {
+  getLastPostedImage,
+  saveLastPostedImage,
+} = require("./setwalltaker.js"); // Import functions
 
 require("./server"); // Express Server
 
@@ -80,31 +84,37 @@ async function postWalltakerImages() {
 
       const imageData = await fetchWalltakerImage(feed_id);
       if (!imageData) {
-        console.log(`⚠️ No image found in Walltaker feed for guild ${guild_id}`);
+        console.log(
+          `⚠️ No image found in Walltaker feed for guild ${guild_id}`
+        );
         continue;
       }
 
-      const { imageUrl, sourceUrl, lastUpdatedBy } = imageData; // Added `lastUpdatedBy`
+      const { imageUrl, sourceUrl, lastUpdatedBy } = imageData;
 
-      // ✅ Check if image is new
-      if (lastPostedImages[guild_id] !== imageUrl) {
+      // ✅ Fetch last posted image from MySQL
+      const lastPosted = await getLastPostedImage(guild_id);
+
+      if (lastPosted !== imageUrl) {
         console.log(
           `🆕 New Walltaker image detected for guild ${guild_id}, sending now!`
         );
 
-        lastPostedImages[guild_id] = imageUrl; // Update last posted image
+        await saveLastPostedImage(guild_id, imageUrl); // ✅ Save to MySQL to prevent duplicates
 
         // ✅ Create Embed
         const embed = new EmbedBuilder()
           .setTitle(`🖼️ Walltaker Image for Feed ${feed_id}`)
-          .setDescription("🔄 **Automatic Detection** - A new wallpaper has been set!") // Automatic detection notice
+          .setDescription(
+            "🔄 **Automatic Detection** - A new wallpaper has been set!"
+          ) // Automatic detection notice
           .setImage(imageUrl)
           .setColor("#3498DB")
           .setFooter({
             text: lastUpdatedBy
               ? `Wallpaper changed by: ${lastUpdatedBy}`
               : "Wallpaper changer unknown",
-            iconURL: "https://cdn-icons-png.flaticon.com/512/1828/1828490.png", // Generic icon
+            iconURL: "https://cdn-icons-png.flaticon.com/512/1828/1828490.png",
           });
 
         // ✅ Create Button
@@ -121,9 +131,6 @@ async function postWalltakerImages() {
           `✅ No new Walltaker image for guild ${guild_id}, skipping...`
         );
       }
-
-      // ✅ Update last seen image to detect changes quickly
-      lastCheckImages[guild_id] = imageUrl;
     } catch (error) {
       console.error(
         `❌ Error posting Walltaker image for guild ${guild_id}:`,
@@ -154,7 +161,6 @@ async function monitorWalltakerChanges() {
     }
   }
 }
-
 
 client.once("ready", async () => {
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");

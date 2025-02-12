@@ -8,7 +8,7 @@ const WALLTAKER_API_KEY = process.env.WALLTAKERAPIKEY;
  * @returns {Promise<Object|null>} Image data or null if none found.
  */
 async function fetchWalltakerImage(feedId) {
-  const apiUrl = `https://walltaker.joi.how/api/links/${feedId}.json`; // ✅ Fixed URL
+  const apiUrl = `https://walltaker.joi.how/api/links/${feedId}.json`;
 
   try {
     console.log(`🔍 Fetching Walltaker feed: ${apiUrl}`);
@@ -33,15 +33,15 @@ async function fetchWalltakerImage(feedId) {
     console.log("📥 Received Data:", data);
 
     if (!data.post_url) {
-      // ✅ Fixed the wrong key
       console.warn("⚠️ No image found in Walltaker feed.");
       return null;
     }
 
     return {
       feedId,
-      imageUrl: data.post_url, // ✅ Fixed the wrong key
+      imageUrl: data.post_url, // ✅ Fixed key
       sourceUrl: `https://walltaker.joi.how/links/${feedId}`,
+      lastUpdatedBy: data.owner ?? "Unknown User", // ✅ Added wallpaper changer info
     };
   } catch (error) {
     console.error(
