@@ -116,6 +116,40 @@ async function getUserInstallation(userId) {
   }
 }
 
+// ✅ Get User Preference
+async function getUserPreference(userId) {
+  try {
+    const [rows] = await databasePool.execute(
+      "SELECT preference FROM user_preferences WHERE user_id = ?",
+      [userId]
+    );
+    return rows.length > 0 ? rows[0].preference : "random";
+  } catch (error) {
+    console.error(
+      `❌ MySQL Error (getUserPreference): ${error.code} - ${error.sqlMessage}`
+    );
+    return "random";
+  }
+}
+
+// ✅ Set User Preference
+async function setUserPreference(userId, preference) {
+  if (!["male", "female", "random"].includes(preference)) return false;
+  try {
+    await databasePool.execute(
+      "INSERT INTO user_preferences (user_id, preference) VALUES (?, ?) ON DUPLICATE KEY UPDATE preference = ?;",
+      [userId, preference, preference]
+    );
+    return true;
+  } catch (error) {
+    console.error(
+      `❌ MySQL Error (setUserPreference): ${error.code} - ${error.sqlMessage}`
+    );
+    return false;
+  }
+}
+
+// ✅ Export all functions
 module.exports = {
   database: databasePool,
   getUserPreference,
