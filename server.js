@@ -52,8 +52,20 @@ app.get("/oauth/callback", async (req, res) => {
       headers: { Authorization: `Bearer ${access_token}` },
     });
 
+    console.log("Discord user response:", userResponse.data); // Log the entire response
+
     const userId = userResponse.data.id;
+    console.log("Retrieved userId:", userId);
     const username = userResponse.data.username;
+
+    console.log("Retrieved userId:", userId); // Log the userId
+    console.log("Type of userId:", typeof userId); // Log the type
+
+    if (!userId) {
+      // Check if userId is null or undefined
+      console.error("User ID is missing from Discord response!");
+      return res.status(500).send("❌ Authentication failed. User ID missing.");
+    }
 
     // ✅ Store user installation data
     const success = await storeUserInstallation(

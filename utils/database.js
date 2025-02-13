@@ -85,6 +85,9 @@ ensureTablesExist();
 
 // ✅ Store User Installation Data
 async function storeUserInstallation(userId, accessToken, refreshToken) {
+  console.log("storeUserInstallation called with userId:", userId);
+  console.log("Type of userId:", typeof userId);
+
   try {
     await databasePool.execute(
       "INSERT INTO user_installations (user_id, access_token, refresh_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE access_token = ?, refresh_token = ?;",
