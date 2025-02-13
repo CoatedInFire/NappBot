@@ -94,7 +94,8 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    let embed = null; // Declare embed outside the try block
+    let embed = null;
+    let image = null;
 
     try {
       console.log("⚡ Command execution started...");
@@ -122,11 +123,44 @@ module.exports = {
       }
 
       console.log("⌛ Deferring reply...");
-      await interaction.deferReply(); // Defer *only* after pre-checks pass
+      await interaction.deferReply();
 
-      // ... (rest of your code for fetching preferences, selecting image, etc.)
+      // 🔍 Fetch recipient's sex preference
+      let type = await getUserPreference(recipient.id);
+      console.log(`🔍 Retrieved preference: ${type} for ${recipient.id}`);
 
-      // Randomized descriptions
+      const validTypes = ["male", "female"];
+      if (!type || !validTypes.includes(type)) {
+        type = validTypes[Math.floor(Math.random() * validTypes.length)];
+      }
+
+      // 🎭 Get pose from input or randomize
+      let pose = interaction.options.getString("pose");
+      const poseOptions = ["behind", "front"];
+      if (!pose || !poseOptions.includes(pose)) {
+        pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
+      }
+
+      console.log(`🔀 Selected Type: ${type}, Pose: ${pose}`);
+
+      // 🚨 Ensure images exist
+      if (
+        !images[type] ||
+        !images[type][pose] ||
+        images[type][pose].length === 0
+      ) {
+        console.error(`❌ No images found for: ${type}, ${pose}`);
+        return interaction.editReply({
+          // Return immediately on error
+          content: "❌ Something went wrong while choosing the image!",
+        });
+      }
+
+      // 📷 Select a random image
+      const randomIndex = Math.floor(Math.random() * images[type][pose].length);
+      image = images[type][pose][randomIndex];
+
+      // 💬 Randomized descriptions
       const descriptions = [
         `${sender} is having a steamy session with ${recipient}! 🔥`,
         `${recipient} and ${sender} are enjoying some quality time together. 😏`,
@@ -136,11 +170,13 @@ module.exports = {
       const randomDescription =
         descriptions[Math.floor(Math.random() * descriptions.length)];
 
-      // Build and send embed
-      embed = new EmbedBuilder() // Now create the embed
+      console.log(`📷 Selected Image Index: ${randomIndex}`);
+
+      // 🎨 Build and send embed
+      embed = new EmbedBuilder()
         .setTitle("🔥 Steamy Interaction!")
         .setDescription(randomDescription)
-        .setImage(image) // Make sure 'image' is defined from your image selection logic
+        .setImage(image) // Now image is guaranteed to be defined
         .setColor("#FF007F")
         .setTimestamp();
 
@@ -150,16 +186,17 @@ module.exports = {
       console.error("❌ Error executing command:", error);
 
       try {
+        const content =
+          "❌ Something went wrong while processing your request.";
+
         if (embed) {
-          // Check if embed was created before trying to edit
-          await interaction.editReply({
-            content: "❌ Something went wrong while processing your request.",
-            embeds: [], // Clear any potential embeds if an error occurred before creation
-          });
+          // Check if embed was created
+          await interaction.editReply({ content, embeds: [] }); // Clear embeds
+        } else if (image) {
+          // Check if image was selected even if embed creation failed
+          await interaction.editReply({ content }); // Send content only
         } else {
-          await interaction.editReply({
-            content: "❌ Something went wrong while processing your request.",
-          });
+          await interaction.editReply({ content }); // Send content only
         }
       } catch (nestedError) {
         console.error(
