@@ -121,17 +121,8 @@ async function getUserInstallation(userId) {
 
 // ✅ Get User Preference
 async function getUserPreference(userId) {
-  console.log("getUserPreference called with userId (ORIGINAL):", userId);
-  console.log("Type of userId (ORIGINAL):", typeof userId);
-
   const trimmedUserId = userId.trim();
-  console.log("Trimmed userId:", trimmedUserId);
-  console.log("Type of trimmedUserId:", typeof trimmedUserId);
-
-  // Convert to String (Just in Case):
-  const stringUserId = String(trimmedUserId); // Force string conversion
-  console.log("Stringified userId:", stringUserId);
-  console.log("Type of stringUserId:", typeof stringUserId);
+  const stringUserId = String(trimmedUserId);
 
   try {
     const query = "SELECT preference FROM user_preferences WHERE user_id = ?";
@@ -143,7 +134,7 @@ async function getUserPreference(userId) {
 
     if (rows.length === 0) {
       console.log(`No preference found for user ${stringUserId}`);
-      return "random";
+      return null; // Return null when no preference is found
     }
 
     const preference = rows[0].preference;
