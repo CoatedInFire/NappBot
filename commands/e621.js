@@ -42,6 +42,7 @@ module.exports = {
     }
 
     let currentIndex = 0;
+    let collector; // Declare the collector outside
 
     // Function to create an embed from postData
     function createEmbed(postData) {
@@ -96,28 +97,35 @@ module.exports = {
       components: [createRow()],
     });
 
-    // Button Interaction Collector
-    const filter = (i) => i.user.id === interaction.user.id;
-    const collector = message.createMessageComponentCollector({
-      filter,
-      time: 60000,
-    });
+    // Function to restart the collector
+    function restartCollector() {
+      if (collector) collector.stop(); // Stop the existing collector
 
-    collector.on("collect", async (i) => {
-      if (i.customId === `next_${interaction.id}`) {
-        currentIndex = Math.min(currentIndex + 1, postDataArray.length - 1);
-      } else if (i.customId === `prev_${interaction.id}`) {
-        currentIndex = Math.max(currentIndex - 1, 0);
-      }
-
-      await i.update({
-        embeds: [createEmbed(postDataArray[currentIndex])],
-        components: [createRow()],
+      collector = message.createMessageComponentCollector({
+        filter: (i) => i.user.id === interaction.user.id,
+        time: 90000, // 1.5 minutes (90,000 ms)
       });
-    });
 
-    collector.on("end", async () => {
-      await interaction.editReply({ components: [] }); // Removes buttons when interaction expires
-    });
+      collector.on("collect", async (i) => {
+        if (i.customId === `next_${interaction.id}`) {
+          currentIndex = Math.min(currentIndex + 1, postDataArray.length - 1);
+        } else if (i.customId === `prev_${interaction.id}`) {
+          currentIndex = Math.max(currentIndex - 1, 0);
+        }
+
+        await i.update({
+          embeds: [createEmbed(postDataArray[currentIndex])],
+          components: [createRow()],
+        });
+
+        restartCollector(); // Restart the collector timer on every button press
+      });
+
+      collector.on("end", async () => {
+        await interaction.editReply({ components: [] }); // Removes buttons when interaction expires
+      });
+    }
+
+    restartCollector(); // Start the initial collector
   },
 };
