@@ -11,6 +11,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("e621")
     .setDescription("🔞 Search for images on e621.net")
+    .setDMPermission(true)
     .addStringOption((option) =>
       option
         .setName("tags")

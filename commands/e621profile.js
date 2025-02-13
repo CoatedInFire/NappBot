@@ -12,6 +12,7 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("e621profile")
     .setDescription("🔎 Get a user's profile from e621.net")
+    .setDMPermission(true)
     .addStringOption((option) =>
       option
         .setName("username")
