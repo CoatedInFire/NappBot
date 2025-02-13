@@ -18,25 +18,29 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    try {
-      const userId = interaction.user.id;
-      const preference = interaction.options.getString("sex");
+    await interaction.deferReply({ ephemeral: true }); // ✅ Prevents "Already Replied" error
 
+    const userId = interaction.user.id;
+    const preference = interaction.options.getString("sex");
+
+    try {
       const success = await setUserPreference(userId, preference);
       if (!success) {
-        throw new Error("Database error");
+        console.error(`❌ Failed to set preference for user ${userId}`);
+        return interaction.editReply({
+          content: "⚠️ Could not save your preference. Try again later.",
+        });
       }
 
-      await interaction.reply({
+      console.log(`✅ Preference set for ${userId}: ${preference}`);
+      await interaction.editReply({
         content: `✅ Your preference has been set to **${preference}**!`,
-        ephemeral: true,
       });
     } catch (error) {
       console.error("❌ Error setting preference:", error);
-      await interaction.reply({
+      await interaction.editReply({
         content:
           "⚠️ An error occurred while saving your preference. Please try again later.",
-        ephemeral: true,
       });
     }
   },

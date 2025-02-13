@@ -69,6 +69,6 @@ module.exports = {
       .setColor("#FFC0CB")
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
   },
 };
