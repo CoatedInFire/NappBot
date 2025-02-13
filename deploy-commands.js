@@ -1,45 +1,21 @@
 require("dotenv").config();
 const { REST, Routes } = require("discord.js");
-const fs = require("fs");
-const path = require("path");
+const commands = require("./commands").map((cmd) => cmd.toJSON());
 
 const token = process.env.TOKEN;
 const clientId = process.env.CLIENT_ID;
-const guildId = "1146990138656825415"; // Your Server ID
-
-const commands = [];
-
-// ✅ Read commands from /commands/
-const commandFiles = fs
-  .readdirSync("./commands")
-  .filter((file) => file.endsWith(".js"));
-
-for (const file of commandFiles) {
-  const command = require(`../commands/${file}`);
-  if (command.data) {
-    commands.push(command.data.toJSON());
-  } else {
-    console.warn(`⚠️ Skipping invalid command file: ${file}`);
-  }
-}
 
 const rest = new REST({ version: "10" }).setToken(token);
 
 (async () => {
   try {
-    console.log("🚨 Deleting old commands...");
+    console.log("🚨 Deleting old global commands...");
+    await rest.put(Routes.applicationCommands(clientId), { body: [] });
+    console.log("✅ Cleared old global commands!");
 
-    // Clear existing commands before re-registering
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-      body: [],
-    });
-    console.log("✅ Cleared old commands!");
-
-    console.log("🔄 Registering new commands...");
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-      body: commands,
-    });
-    console.log("✅ Successfully registered commands.");
+    console.log("🔄 Registering new global commands...");
+    await rest.put(Routes.applicationCommands(clientId), { body: commands });
+    console.log("✅ Successfully registered global commands.");
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
   }
