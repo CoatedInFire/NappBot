@@ -94,24 +94,29 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply(); // Defer before doing any async work
-
-    let responseMessage = ""; // Store the message response
-    let embed = null; // Store embed if needed
+    let deferred = false;
 
     try {
       const sender = interaction.user;
       const recipient = interaction.options.getUser("user");
 
       if (!recipient) {
-        responseMessage = "❌ You must mention someone!";
-        throw new Error("No recipient provided.");
+        return interaction.reply({
+          content: "❌ You must mention someone!",
+          ephemeral: true,
+        });
       }
 
       if (recipient.id === sender.id) {
-        responseMessage = "❌ You can't do this to yourself...";
-        throw new Error("User tried to interact with themselves.");
+        return interaction.reply({
+          content: "❌ You can't do this to yourself...",
+          ephemeral: true,
+        });
       }
+
+      // Defer only if processing continues beyond checks
+      await interaction.deferReply();
+      deferred = true;
 
       // Fetch recipient's sex preference
       let type = await getUserPreference(recipient.id);
@@ -135,7 +140,6 @@ module.exports = {
         !images[type][pose] ||
         images[type][pose].length === 0
       ) {
-        responseMessage = "❌ Something went wrong while choosing the image!";
         throw new Error(`Invalid type or pose: ${type}, ${pose}`);
       }
 
@@ -157,21 +161,28 @@ module.exports = {
       console.log(`Selected Image Index: ${randomIndex}`);
 
       // Build the embed
-      embed = new EmbedBuilder()
+      const embed = new EmbedBuilder()
         .setTitle("🔥 Steamy Interaction!")
         .setDescription(randomDescription)
         .setImage(image)
         .setColor("#FF007F")
         .setTimestamp();
+
+      await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       console.error("❌ Error executing /fuck:", error);
-    }
 
-    // Send final reply (embed if available, otherwise plain message)
-    if (embed) {
-      await interaction.editReply({ embeds: [embed] });
-    } else {
-      await interaction.editReply({ content: responseMessage });
+      // Reply only if not already deferred
+      if (!deferred) {
+        return interaction.reply({
+          content: "❌ Something went wrong!",
+          ephemeral: true,
+        });
+      } else {
+        return interaction.editReply({
+          content: "❌ Something went wrong while processing your request.",
+        });
+      }
     }
   },
 };
