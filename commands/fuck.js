@@ -94,33 +94,33 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    let deferred = false;
-
     try {
       console.log("⚡ Command execution started...");
 
       const sender = interaction.user;
       const recipient = interaction.options.getUser("user");
 
+      // Pre-checks (reply immediately if failing)
       if (!recipient) {
         console.log("❌ No recipient provided.");
-        return interaction.reply({
+        await interaction.reply({
           content: "❌ You must mention someone!",
           ephemeral: true,
         });
+        return;
       }
 
       if (recipient.id === sender.id) {
         console.log("❌ User tried to target themselves.");
-        return interaction.reply({
+        await interaction.reply({
           content: "❌ You can't do this to yourself...",
           ephemeral: true,
         });
+        return;
       }
 
       console.log("⌛ Deferring reply...");
       await interaction.deferReply();
-      deferred = true;
 
       // Fetch recipient's sex preference
       let type = await getUserPreference(recipient.id);
@@ -147,7 +147,10 @@ module.exports = {
         images[type][pose].length === 0
       ) {
         console.error(`❌ No images found for: ${type}, ${pose}`);
-        throw new Error("❌ Something went wrong while choosing the image!");
+        await interaction.editReply({
+          content: "❌ Something went wrong while choosing the image!",
+        });
+        return;
       }
 
       // Select a random image
@@ -179,16 +182,15 @@ module.exports = {
     } catch (error) {
       console.error("❌ Error executing command:", error);
 
-      // Ensure we use editReply() only if deferReply() was used
-      if (deferred) {
-        console.log("⚠️ Interaction already deferred. Using editReply...");
+      // Use editReply() only if deferReply() was successful
+      try {
         await interaction.editReply({
           content: "❌ Something went wrong while processing your request.",
         });
-      } else {
-        console.log("⚠️ Interaction not deferred. Using reply...");
+      } catch {
+        console.log("⚠️ Interaction was not deferred. Sending normal reply...");
         await interaction.reply({
-          content: "❌ An error occurred.",
+          content: "❌ An unexpected error occurred.",
           ephemeral: true,
         });
       }
