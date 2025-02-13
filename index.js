@@ -33,26 +33,19 @@ const client = new Client({
   ],
 });
 
-client.commands = new Collection(); // Initialize the Collection
+client.commands = new Collection();
 
 client.once("ready", async () => {
-  // Load commands and events AFTER ready event
-  console.log("✅ Bot is fully loaded and ready to go!"); // Final confirmation
+  console.log("✅ Bot is fully loaded and ready to go!");
 
-  const commandFiles = fs
-    .readdirSync("./commands")
-    .filter((file) => file.endsWith(".js"));
+  const commands = require("./commands"); // Correctly load from commands/index.js
 
-  for (const file of commandFiles) {
-    const command = require(`./commands/${file}`);
-    if (command.data && command.execute) {
-      client.commands.set(command.data.name, command);
-    } else {
-      console.warn(`⚠️ Skipping invalid command file: ${file}`);
-    }
-  }
+  commands.forEach((command) => {
+    // Load commands from the array exported by commands/index.js
+    client.commands.set(command.data.name, command);
+  });
 
-  const eventFiles = fs
+  const eventFiles = fs // Load events (this part is fine)
     .readdirSync("./events")
     .filter((file) => file.endsWith(".js"));
 
