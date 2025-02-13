@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const querystring = require("querystring");
-const { storeUserInstallation } = require("./database"); // ✅ Import database functions
+const { storeUserInstallation } = require("./utils/database"); // ✅ Import database functions
 
 const app = express();
 
