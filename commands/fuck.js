@@ -174,7 +174,7 @@ module.exports = {
 
       // Reply only if not already deferred
       if (!deferred) {
-        return interaction.reply({
+        return interaction.editReply({
           content: "❌ Something went wrong!",
           ephemeral: true,
         });
