@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const querystring = require("querystring");
+const { storeUserInstallation } = require("./database"); // ✅ Import database functions
 
 const app = express();
 
@@ -26,11 +27,11 @@ const DISCORD_API = "https://discord.com/api";
 app.get("/oauth/callback", async (req, res) => {
   const code = req.query.code;
   if (!code) {
-    return res.status(400).send("No code provided.");
+    return res.status(400).send("❌ No code provided.");
   }
 
   try {
-    // Exchange code for access token
+    // Exchange code for access and refresh tokens
     const tokenResponse = await axios.post(
       `${DISCORD_API}/oauth2/token`,
       querystring.stringify({
@@ -44,19 +45,31 @@ app.get("/oauth/callback", async (req, res) => {
       { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
     );
 
-    const accessToken = tokenResponse.data.access_token;
+    const { access_token, refresh_token } = tokenResponse.data;
 
     // Fetch user data
     const userResponse = await axios.get(`${DISCORD_API}/users/@me`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${access_token}` },
     });
 
+    const userId = userResponse.data.id;
+    const username = userResponse.data.username;
+
+    // ✅ Store user installation data
+    const success = await storeUserInstallation(
+      userId,
+      access_token,
+      refresh_token
+    );
+    if (!success)
+      throw new Error("❌ Failed to store user data in the database.");
+
     res.send(
-      `Welcome, ${userResponse.data.username}! You have successfully authorized NappBot.`
+      `✅ Welcome, ${username}! You have successfully authorized NappBot.`
     );
   } catch (error) {
-    console.error("OAuth2 Error:", error.response?.data || error.message);
-    res.status(500).send("Authentication failed.");
+    console.error("❌ OAuth2 Error:", error.response?.data || error.message);
+    res.status(500).send("❌ Authentication failed.");
   }
 });
 
