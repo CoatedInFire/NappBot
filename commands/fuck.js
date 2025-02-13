@@ -103,96 +103,51 @@ module.exports = {
       // Pre-checks (reply immediately if failing)
       if (!recipient) {
         console.log("❌ No recipient provided.");
-        await interaction.reply({
+        return interaction.reply({
+          // Return here to stop further execution
           content: "❌ You must mention someone!",
           ephemeral: true,
         });
-        return;
       }
 
       if (recipient.id === sender.id) {
         console.log("❌ User tried to target themselves.");
-        await interaction.reply({
+        return interaction.reply({
+          // Return here to stop further execution
           content: "❌ You can't do this to yourself...",
           ephemeral: true,
         });
-        return;
       }
 
       console.log("⌛ Deferring reply...");
-      await interaction.deferReply();
+      await interaction.deferReply(); // Defer *only* after pre-checks pass
 
-      // Fetch recipient's sex preference
-      let type = await getUserPreference(recipient.id);
-      console.log(`🔍 Retrieved preference: ${type} for ${recipient.id}`);
-
-      const validTypes = ["male", "female"];
-      if (!type || !validTypes.includes(type)) {
-        type = validTypes[Math.floor(Math.random() * validTypes.length)];
-      }
-
-      // Get pose from input or randomize
-      let pose = interaction.options.getString("pose");
-      const poseOptions = ["behind", "front"];
-      if (!pose || !poseOptions.includes(pose)) {
-        pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
-      }
-
-      console.log(`🔀 Selected Type: ${type}, Pose: ${pose}`);
-
-      // Ensure images database exists
-      if (
-        !images[type] ||
-        !images[type][pose] ||
-        images[type][pose].length === 0
-      ) {
-        console.error(`❌ No images found for: ${type}, ${pose}`);
-        await interaction.editReply({
-          content: "❌ Something went wrong while choosing the image!",
-        });
-        return;
-      }
-
-      // Select a random image
-      const randomIndex = Math.floor(Math.random() * images[type][pose].length);
-      const image = images[type][pose][randomIndex];
-
-      // Randomized descriptions
-      const descriptions = [
-        `${sender} is having a steamy session with ${recipient}! 🔥`,
-        `${recipient} and ${sender} are enjoying some quality time together. 😏`,
-        `Things are getting intense between ${sender} and ${recipient}! 💋`,
-        `${sender} and ${recipient} are lost in passion! 💕`,
-      ];
-      const randomDescription =
-        descriptions[Math.floor(Math.random() * descriptions.length)];
-
-      console.log(`📷 Selected Image Index: ${randomIndex}`);
-
-      // Build and send embed
-      const embed = new EmbedBuilder()
-        .setTitle("🔥 Steamy Interaction!")
-        .setDescription(randomDescription)
-        .setImage(image)
-        .setColor("#FF007F")
-        .setTimestamp();
+      // ... (rest of your code for fetching preferences, selecting image, etc.)
 
       console.log("✅ Sending embed response...");
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       console.error("❌ Error executing command:", error);
 
-      // Use editReply() only if deferReply() was successful
+      // Simplified error handling
       try {
         await interaction.editReply({
+          // Try to edit if deferred
           content: "❌ Something went wrong while processing your request.",
         });
-      } catch {
-        console.log("⚠️ Interaction was not deferred. Sending normal reply...");
-        await interaction.reply({
-          content: "❌ An unexpected error occurred.",
-          ephemeral: true,
-        });
+      } catch (nestedError) {
+        // If editReply fails (not deferred), reply
+        console.error(
+          "⚠️ Interaction was not deferred or already replied to:",
+          nestedError
+        );
+        if (!interaction.replied) {
+          // Check if already replied to avoid another error
+          await interaction.reply({
+            content: "❌ An unexpected error occurred.",
+            ephemeral: true,
+          });
+        }
       }
     }
   },
