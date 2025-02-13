@@ -94,6 +94,8 @@ module.exports = {
     ),
 
   async execute(interaction) {
+    let embed = null; // Declare embed outside the try block
+
     try {
       console.log("⚡ Command execution started...");
 
@@ -104,7 +106,7 @@ module.exports = {
       if (!recipient) {
         console.log("❌ No recipient provided.");
         return interaction.reply({
-          // Return here to stop further execution
+          // Return here is essential
           content: "❌ You must mention someone!",
           ephemeral: true,
         });
@@ -113,7 +115,7 @@ module.exports = {
       if (recipient.id === sender.id) {
         console.log("❌ User tried to target themselves.");
         return interaction.reply({
-          // Return here to stop further execution
+          // Return here is essential
           content: "❌ You can't do this to yourself...",
           ephemeral: true,
         });
@@ -124,25 +126,47 @@ module.exports = {
 
       // ... (rest of your code for fetching preferences, selecting image, etc.)
 
+      // Randomized descriptions
+      const descriptions = [
+        `${sender} is having a steamy session with ${recipient}! 🔥`,
+        `${recipient} and ${sender} are enjoying some quality time together. 😏`,
+        `Things are getting intense between ${sender} and ${recipient}! 💋`,
+        `${sender} and ${recipient} are lost in passion! 💕`,
+      ];
+      const randomDescription =
+        descriptions[Math.floor(Math.random() * descriptions.length)];
+
+      // Build and send embed
+      embed = new EmbedBuilder() // Now create the embed
+        .setTitle("🔥 Steamy Interaction!")
+        .setDescription(randomDescription)
+        .setImage(image) // Make sure 'image' is defined from your image selection logic
+        .setColor("#FF007F")
+        .setTimestamp();
+
       console.log("✅ Sending embed response...");
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
       console.error("❌ Error executing command:", error);
 
-      // Simplified error handling
       try {
-        await interaction.editReply({
-          // Try to edit if deferred
-          content: "❌ Something went wrong while processing your request.",
-        });
+        if (embed) {
+          // Check if embed was created before trying to edit
+          await interaction.editReply({
+            content: "❌ Something went wrong while processing your request.",
+            embeds: [], // Clear any potential embeds if an error occurred before creation
+          });
+        } else {
+          await interaction.editReply({
+            content: "❌ Something went wrong while processing your request.",
+          });
+        }
       } catch (nestedError) {
-        // If editReply fails (not deferred), reply
         console.error(
           "⚠️ Interaction was not deferred or already replied to:",
           nestedError
         );
         if (!interaction.replied) {
-          // Check if already replied to avoid another error
           await interaction.reply({
             content: "❌ An unexpected error occurred.",
             ephemeral: true,
