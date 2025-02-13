@@ -123,15 +123,22 @@ async function getUserPreference(userId) {
       "SELECT preference FROM user_preferences WHERE user_id = ?",
       [userId]
     );
-    return rows.length > 0 ? rows[0].preference : "random";
+
+    if (rows.length === 0) {
+      console.log(`No preference found for user ${userId}, returning 'random'`);
+      return "random"; // Explicitly handle the case where no preference exists
+    }
+
+    const preference = rows[0].preference; // Access the preference from the first row
+    console.log(`Retrieved preference '${preference}' for user ${userId}`);
+    return preference;
   } catch (error) {
     console.error(
       `❌ MySQL Error (getUserPreference): ${error.code} - ${error.sqlMessage}`
     );
-    return "random";
+    return "random"; // Return "random" on error as well
   }
 }
-
 // ✅ Set User Preference
 async function setUserPreference(userId, preference) {
   if (!["male", "female", "random"].includes(preference)) return false;
