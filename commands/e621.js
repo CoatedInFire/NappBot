@@ -22,12 +22,11 @@ module.exports = {
     const sender = interaction.user;
     const tags = interaction.options.getString("tags")?.split(" ") || [];
 
-    // Default behavior when no tags are provided
     if (tags.length === 0) {
-      tags.push("score:>=100"); // Fetch from top-rated posts
+      tags.push("score:>=100"); // Fetch top-rated posts
     }
 
-    await interaction.deferReply(); // Defer reply while fetching data
+    await interaction.deferReply();
 
     let postDataArray;
     try {
@@ -42,9 +41,8 @@ module.exports = {
     }
 
     let currentIndex = 0;
-    let collector; // Declare the collector outside
+    let timeout; // Timeout reference
 
-    // Function to create an embed from postData
     function createEmbed(postData) {
       return new EmbedBuilder()
         .setTitle("🔞 e621 Image Result")
@@ -72,7 +70,6 @@ module.exports = {
         });
     }
 
-    // Function to create action buttons
     function createRow() {
       return new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -97,35 +94,37 @@ module.exports = {
       components: [createRow()],
     });
 
-    // Function to restart the collector
-    function restartCollector() {
-      if (collector) collector.stop(); // Stop the existing collector
+    const collector = message.createMessageComponentCollector({
+      filter: (i) => i.user.id === interaction.user.id,
+      time: 90000, // 1.5 minutes
+    });
 
-      collector = message.createMessageComponentCollector({
-        filter: (i) => i.user.id === interaction.user.id,
-        time: 90000, // 1.5 minutes (90,000 ms)
-      });
-
-      collector.on("collect", async (i) => {
-        if (i.customId === `next_${interaction.id}`) {
-          currentIndex = Math.min(currentIndex + 1, postDataArray.length - 1);
-        } else if (i.customId === `prev_${interaction.id}`) {
-          currentIndex = Math.max(currentIndex - 1, 0);
-        }
-
-        await i.update({
-          embeds: [createEmbed(postDataArray[currentIndex])],
-          components: [createRow()],
-        });
-
-        restartCollector(); // Restart the collector timer on every button press
-      });
-
-      collector.on("end", async () => {
-        await interaction.editReply({ components: [] }); // Removes buttons when interaction expires
-      });
+    function resetTimeout() {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        collector.stop(); // Stop collector after timeout
+      }, 90000);
     }
 
-    restartCollector(); // Start the initial collector
+    resetTimeout(); // Start the timeout initially
+
+    collector.on("collect", async (i) => {
+      if (i.customId === `next_${interaction.id}`) {
+        currentIndex = Math.min(currentIndex + 1, postDataArray.length - 1);
+      } else if (i.customId === `prev_${interaction.id}`) {
+        currentIndex = Math.max(currentIndex - 1, 0);
+      }
+
+      await i.update({
+        embeds: [createEmbed(postDataArray[currentIndex])],
+        components: [createRow()],
+      });
+
+      resetTimeout(); // Refresh the timeout on every button press
+    });
+
+    collector.on("end", async () => {
+      await interaction.editReply({ components: [] });
+    });
   },
 };
