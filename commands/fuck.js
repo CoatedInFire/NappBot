@@ -94,76 +94,84 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply();
+    await interaction.deferReply(); // Defer before doing any async work
 
-    const sender = interaction.user;
-    const recipient = interaction.options.getUser("user");
+    let responseMessage = ""; // Store the message response
+    let embed = null; // Store embed if needed
 
-    if (!recipient) {
-      return interaction.editReply({
-        content: "❌ You must mention someone!",
-      });
+    try {
+      const sender = interaction.user;
+      const recipient = interaction.options.getUser("user");
+
+      if (!recipient) {
+        responseMessage = "❌ You must mention someone!";
+        throw new Error("No recipient provided.");
+      }
+
+      if (recipient.id === sender.id) {
+        responseMessage = "❌ You can't do this to yourself...";
+        throw new Error("User tried to interact with themselves.");
+      }
+
+      // Fetch recipient's sex preference
+      let type = await getUserPreference(recipient.id);
+      console.log(`🔍 Retrieved preference: ${type} for ${recipient.id}`);
+
+      const validTypes = ["male", "female"];
+      if (!type || !validTypes.includes(type)) {
+        type = validTypes[Math.floor(Math.random() * validTypes.length)];
+      }
+
+      // Get pose from input or randomize
+      let pose = interaction.options.getString("pose");
+      const poseOptions = ["behind", "front"];
+      if (!pose || !poseOptions.includes(pose)) {
+        pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
+      }
+
+      // Ensure images database exists
+      if (
+        !images[type] ||
+        !images[type][pose] ||
+        images[type][pose].length === 0
+      ) {
+        responseMessage = "❌ Something went wrong while choosing the image!";
+        throw new Error(`Invalid type or pose: ${type}, ${pose}`);
+      }
+
+      // Randomly select an image
+      const randomIndex = Math.floor(Math.random() * images[type][pose].length);
+      const image = images[type][pose][randomIndex];
+
+      // Randomized descriptions
+      const descriptions = [
+        `${sender} is having a steamy session with ${recipient}! 🔥`,
+        `${recipient} and ${sender} are enjoying some quality time together. 😏`,
+        `Things are getting intense between ${sender} and ${recipient}! 💋`,
+        `${sender} and ${recipient} are lost in passion! 💕`,
+      ];
+      const randomDescription =
+        descriptions[Math.floor(Math.random() * descriptions.length)];
+
+      console.log(`Type: ${type}, Pose: ${pose}`);
+      console.log(`Selected Image Index: ${randomIndex}`);
+
+      // Build the embed
+      embed = new EmbedBuilder()
+        .setTitle("🔥 Steamy Interaction!")
+        .setDescription(randomDescription)
+        .setImage(image)
+        .setColor("#FF007F")
+        .setTimestamp();
+    } catch (error) {
+      console.error("❌ Error executing /fuck:", error);
     }
 
-    if (recipient.id === sender.id) {
-      return interaction.editReply({
-        content: "❌ You can't do this to yourself...",
-      });
+    // Send final reply (embed if available, otherwise plain message)
+    if (embed) {
+      await interaction.editReply({ embeds: [embed] });
+    } else {
+      await interaction.editReply({ content: responseMessage });
     }
-
-    // Fetch recipient's sex preference
-    let type = await getUserPreference(recipient.id);
-    console.log(`🔍 Retrieved preference: ${type} for ${recipient.id}`); // ✅ Debugging Log
-
-    const validTypes = ["male", "female"];
-    if (!type || !validTypes.includes(type)) {
-      type = validTypes[Math.floor(Math.random() * validTypes.length)];
-    }
-
-    // Get pose from input or randomize
-    let pose = interaction.options.getString("pose");
-    const poseOptions = ["behind", "front"];
-    if (!pose || !poseOptions.includes(pose)) {
-      pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
-    }
-
-    // Image database (Ensure `images` is defined somewhere in your code)
-    if (
-      !images[type] ||
-      !images[type][pose] ||
-      images[type][pose].length === 0
-    ) {
-      console.error(`❌ Invalid type or pose: ${type}, ${pose}`);
-      return interaction.editReply({
-        content: "❌ Something went wrong while choosing the image!",
-      });
-    }
-
-    // Randomly select an image
-    const randomIndex = Math.floor(Math.random() * images[type][pose].length);
-    const image = images[type][pose][randomIndex];
-
-    // Randomized descriptions
-    const descriptions = [
-      `${sender} is having a steamy session with ${recipient}! 🔥`,
-      `${recipient} and ${sender} are enjoying some quality time together. 😏`,
-      `Things are getting intense between ${sender} and ${recipient}! 💋`,
-      `${sender} and ${recipient} are lost in passion! 💕`,
-    ];
-    const randomDescription =
-      descriptions[Math.floor(Math.random() * descriptions.length)];
-
-    console.log(`Type: ${type}, Pose: ${pose}`);
-    console.log(`Selected Image Index: ${randomIndex}`);
-
-    // Embed response
-    const embed = new EmbedBuilder()
-      .setTitle("🔥 Steamy Interaction!")
-      .setDescription(randomDescription)
-      .setImage(image)
-      .setColor("#FF007F")
-      .setTimestamp();
-
-    await interaction.editReply({ embeds: [embed] });
   },
 };
