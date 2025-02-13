@@ -17,6 +17,7 @@ const rest = new REST({ version: "10" }).setToken(token);
 
     commands.forEach((command) => {
       // 1. Add the slash command version (always add this):
+      console.log("Processing command:", command.data.name);
       allCommands.push(command.data.toJSON());
 
       // 2. Add the user context menu command version ONLY IF needed:
@@ -31,11 +32,13 @@ const rest = new REST({ version: "10" }).setToken(token);
       }
     });
 
+    console.log("Total commands to register:", allCommands.length);
+
     await rest.put(
       Routes.applicationCommands(clientId),
       { body: allCommands } // Use the allCommands array
     );
-
+    
     console.log("✅ Successfully registered global commands.");
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
