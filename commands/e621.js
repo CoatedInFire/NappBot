@@ -42,6 +42,7 @@ module.exports = {
 
     let currentIndex = 0;
     let timeout; // Timeout reference
+    let message; // Store the message object
 
     function createEmbed(postData) {
       return new EmbedBuilder()
@@ -89,7 +90,8 @@ module.exports = {
       );
     }
 
-    const message = await interaction.editReply({
+    // Send the initial reply and store the message object:
+    message = await interaction.editReply({
       embeds: [createEmbed(postDataArray[currentIndex])],
       components: [createRow()],
     });
@@ -103,6 +105,8 @@ module.exports = {
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
         collector.stop(); // Stop collector after timeout
+        // Edit the message to remove buttons AFTER timeout
+        message.edit({ components: [] }); // Edit the stored message object
       }, 90000);
     }
 
@@ -115,6 +119,7 @@ module.exports = {
         currentIndex = Math.max(currentIndex - 1, 0);
       }
 
+      // Update the *message* using message.edit, not interaction.editReply:
       await i.update({
         embeds: [createEmbed(postDataArray[currentIndex])],
         components: [createRow()],
@@ -123,8 +128,30 @@ module.exports = {
       resetTimeout(); // Refresh the timeout on every button press
     });
 
-    collector.on("end", async () => {
-      await interaction.editReply({ components: [] });
+    collector.on("end", async (collected) => {
+      if (collected.size === 0) {
+        // If the collector ended due to timeout
+        message.edit({ components: [] }); // Remove buttons after timeout
+      }
+
+      // Handle interactions after the collector ends (if the user clicks a button):
+      message
+        .createMessageComponentCollector({
+          filter: (i) => i.user.id === interaction.user.id,
+          time: null, // No timeout
+        })
+        .on("collect", async (i) => {
+          if (i.customId === `next_${interaction.id}`) {
+            currentIndex = Math.min(currentIndex + 1, postDataArray.length - 1);
+          } else if (i.customId === `prev_${interaction.id}`) {
+            currentIndex = Math.max(currentIndex - 1, 0);
+          }
+
+          await i.update({
+            embeds: [createEmbed(postDataArray[currentIndex])],
+            components: [createRow()],
+          });
+        });
     });
   },
 };
