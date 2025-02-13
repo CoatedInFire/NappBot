@@ -1,12 +1,12 @@
 module.exports = {
   name: "interactionCreate",
   async execute(interaction, client) {
-    // Check for BOTH interaction types:
     if (
       interaction.isChatInputCommand() ||
       interaction.isUserContextMenuCommand()
     ) {
-      const command = client.commands.get(interaction.commandName); // No change here
+      // Check for BOTH!
+      const command = client.commands.get(interaction.commandName);
 
       if (!command) {
         return interaction.reply({
