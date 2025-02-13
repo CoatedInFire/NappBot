@@ -17,20 +17,19 @@ const {
 require("./server"); // Express Server
 
 // Ensure required environment variables
-["TOKEN", "CLIENT_ID"].forEach((envVar) => {
-  if (!process.env[envVar]) {
-    console.error(`❌ Missing environment variable: ${envVar}`);
-    process.exit(1);
-  }
-});
+if (!process.env.DISCORD_TOKEN) {
+  console.error(`❌ Missing environment variable: DISCORD_TOKEN`);
+  process.exit(1);
+}
+
+if (!process.env.CLIENT_ID) {
+  console.error(`❌ Missing environment variable: CLIENT_ID`);
+  process.exit(1);
+}
 
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMembers, // Needed for user lookups
-    GatewayIntentBits.DirectMessages, // ✅ Required for DM interactions!
-    GatewayIntentBits.MessageContent, // ✅ Optional, but useful for debugging!
+    // ... your intents
   ],
 });
 
@@ -187,7 +186,7 @@ client.once("ready", async () => {
   setInterval(postWalltakerImages, 10 * 60 * 1000);
 });
 
-client.login(process.env.TOKEN);
+client.login(process.env.DISCORD_TOKEN);
 
 database
   .query("SELECT 1")
