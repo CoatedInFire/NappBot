@@ -62,10 +62,6 @@ module.exports = {
     const randomMessage =
       kissMessages[Math.floor(Math.random() * kissMessages.length)];
 
-    // Debugging logs (to check randomness)
-    console.log(`Kiss GIF Index: ${kissGifs.indexOf(randomGif)}`);
-    console.log(`Kiss Message Index: ${kissMessages.indexOf(randomMessage)}`);
-
     const embed = new EmbedBuilder()
       .setTitle("💋 Kiss Alert!")
       .setDescription(
@@ -77,6 +73,8 @@ module.exports = {
       .setColor("#FF69B4")
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    // *** KEY CHANGE: Send an initial reply (or defer) ***
+    await interaction.reply({ embeds: [embed] }); // Or await interaction.deferReply();
+
   },
 };

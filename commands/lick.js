@@ -59,10 +59,6 @@ module.exports = {
     const randomMessage =
       lickMessages[Math.floor(Math.random() * lickMessages.length)];
 
-    // Debugging to check randomness
-    console.log(`Lick GIF Index: ${lickGifs.indexOf(randomGif)}`);
-    console.log(`Lick Message Index: ${lickMessages.indexOf(randomMessage)}`);
-
     const embed = new EmbedBuilder()
       .setTitle("👅 Lick Alert!")
       .setDescription(
@@ -74,6 +70,7 @@ module.exports = {
       .setColor("#FF007F")
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [embed] });
+    // *** KEY CHANGE: Send an initial reply (or defer) ***
+    await interaction.reply({ embeds: [embed] }); // Or await interaction.deferReply();
   },
 };
