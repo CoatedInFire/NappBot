@@ -125,20 +125,20 @@ module.exports = {
       console.log("⌛ Deferring reply...");
       await interaction.deferReply();
 
-      // 🔍 Fetch recipient's sex preference (WITH ENHANCED LOGGING)
-      console.log("Recipient ID (raw):", recipient.id);
-      console.log("Type of recipient.id:", typeof recipient.id);
-
+      // 🔍 Fetch recipient's sex preference
       const trimmedRecipientId = recipient.id.trim();
-      console.log("Recipient ID (trimmed):", trimmedRecipientId);
-      console.log("Type of trimmedRecipientId:", typeof trimmedRecipientId);
-
       const stringRecipientId = String(trimmedRecipientId); // Force string conversion
-      console.log("Stringified Recipient ID:", stringRecipientId);
-      console.log("Type of stringRecipientId:", typeof stringRecipientId);
-
       let type = await getUserPreference(stringRecipientId); // Use the stringified ID
-      console.log("Final preference:", type);
+
+      // Handle the case where no preference is found (crucially important)
+      if (type === null) {
+        // Check for null, NOT "random"
+        console.log("No explicit preference found, choosing randomly.");
+        const validTypes = ["male", "female"];
+        type = validTypes[Math.floor(Math.random() * validTypes.length)];
+      } else {
+        console.log(`Explicit preference found: ${type}`);
+      }
 
       // 🎭 Get pose from input or randomize
       let pose = interaction.options.getString("pose");
