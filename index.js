@@ -29,6 +29,8 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMembers, // Needed for user lookups
+    GatewayIntentBits.DirectMessages, // ✅ Required for DM interactions!
+    GatewayIntentBits.MessageContent, // ✅ Optional, but useful for debugging!
   ],
 });
 
