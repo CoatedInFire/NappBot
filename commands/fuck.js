@@ -97,10 +97,13 @@ module.exports = {
     let deferred = false;
 
     try {
+      console.log("⚡ Command execution started...");
+
       const sender = interaction.user;
       const recipient = interaction.options.getUser("user");
 
       if (!recipient) {
+        console.log("❌ No recipient provided.");
         return interaction.reply({
           content: "❌ You must mention someone!",
           ephemeral: true,
@@ -108,13 +111,14 @@ module.exports = {
       }
 
       if (recipient.id === sender.id) {
+        console.log("❌ User tried to target themselves.");
         return interaction.reply({
           content: "❌ You can't do this to yourself...",
           ephemeral: true,
         });
       }
 
-      // Defer only if processing continues beyond checks
+      console.log("⌛ Deferring reply...");
       await interaction.deferReply();
       deferred = true;
 
@@ -134,16 +138,19 @@ module.exports = {
         pose = poseOptions[Math.floor(Math.random() * poseOptions.length)];
       }
 
+      console.log(`🔀 Selected Type: ${type}, Pose: ${pose}`);
+
       // Ensure images database exists
       if (
         !images[type] ||
         !images[type][pose] ||
         images[type][pose].length === 0
       ) {
-        throw new Error(`Invalid type or pose: ${type}, ${pose}`);
+        console.error(`❌ No images found for: ${type}, ${pose}`);
+        throw new Error("❌ Something went wrong while choosing the image!");
       }
 
-      // Randomly select an image
+      // Select a random image
       const randomIndex = Math.floor(Math.random() * images[type][pose].length);
       const image = images[type][pose][randomIndex];
 
@@ -157,10 +164,9 @@ module.exports = {
       const randomDescription =
         descriptions[Math.floor(Math.random() * descriptions.length)];
 
-      console.log(`Type: ${type}, Pose: ${pose}`);
-      console.log(`Selected Image Index: ${randomIndex}`);
+      console.log(`📷 Selected Image Index: ${randomIndex}`);
 
-      // Build the embed
+      // Build and send embed
       const embed = new EmbedBuilder()
         .setTitle("🔥 Steamy Interaction!")
         .setDescription(randomDescription)
@@ -168,19 +174,22 @@ module.exports = {
         .setColor("#FF007F")
         .setTimestamp();
 
+      console.log("✅ Sending embed response...");
       await interaction.editReply({ embeds: [embed] });
     } catch (error) {
-      console.error("❌ Error executing /fuck:", error);
+      console.error("❌ Error executing command:", error);
 
-      // Reply only if not already deferred
-      if (!deferred) {
-        return interaction.editReply({
-          content: "❌ Something went wrong!",
-          ephemeral: true,
+      // Ensure we use editReply() only if deferReply() was used
+      if (deferred) {
+        console.log("⚠️ Interaction already deferred. Using editReply...");
+        await interaction.editReply({
+          content: "❌ Something went wrong while processing your request.",
         });
       } else {
-        return interaction.editReply({
-          content: "❌ Something went wrong while processing your request.",
+        console.log("⚠️ Interaction not deferred. Using reply...");
+        await interaction.reply({
+          content: "❌ An error occurred.",
+          ephemeral: true,
         });
       }
     }
