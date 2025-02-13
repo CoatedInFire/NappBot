@@ -1,9 +1,12 @@
-require("dotenv").config();
+require("dotenv").config(); // Important: Include dotenv at the top
 const { REST, Routes } = require("discord.js");
-const commands = require("./commands"); // Your existing command export
-const { clientId, token } = require("./config.json");
+const commands = require("./commands");
 
-const rest = new REST({ version: "10" }).setToken(token);
+// Access environment variables directly:
+const clientId = process.env.CLIENT_ID;
+const token = process.env.DISCORD_TOKEN; // Or process.env.TOKEN, whichever is correct
+
+const rest = new REST({ version: "10" }).setToken(token); // Or v9
 
 (async () => {
   try {
@@ -38,7 +41,7 @@ const rest = new REST({ version: "10" }).setToken(token);
       Routes.applicationCommands(clientId),
       { body: allCommands } // Use the allCommands array
     );
-    
+
     console.log("✅ Successfully registered global commands.");
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
