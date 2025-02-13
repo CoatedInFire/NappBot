@@ -1,9 +1,7 @@
 require("dotenv").config();
 const { REST, Routes } = require("discord.js");
 const commands = require("./commands"); // Your existing command export
-
-const token = process.env.TOKEN;
-const clientId = process.env.CLIENT_ID;
+const { clientId, token } = require("./config.json");
 
 const rest = new REST({ version: "10" }).setToken(token);
 
@@ -18,14 +16,19 @@ const rest = new REST({ version: "10" }).setToken(token);
     const allCommands = []; // Array to hold both slash and context menu commands
 
     commands.forEach((command) => {
-      // 1. Add the slash command version:
-      allCommands.push(command.data.toJSON()); // This is already in your commands array
+      // 1. Add the slash command version (always add this):
+      allCommands.push(command.data.toJSON());
 
-      // 2. Add the user context menu command version:
-      allCommands.push({
-        name: command.data.name, // Same name!
-        type: 2, // User Command
-      });
+      // 2. Add the user context menu command version ONLY IF needed:
+      const excludeCommands = ["walltaker", "setwalltaker"]; // Add commands to exclude
+
+      if (!excludeCommands.includes(command.data.name)) {
+        // Check if command is NOT excluded
+        allCommands.push({
+          name: command.data.name, // Same name!
+          type: 2, // User Command
+        });
+      }
     });
 
     await rest.put(

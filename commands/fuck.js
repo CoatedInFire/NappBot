@@ -75,7 +75,6 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("fuck")
     .setDescription("🔥 Engage in a steamy interaction with another user.")
-    .setDMPermission(true)
     .addUserOption((option) =>
       option
         .setName("user")

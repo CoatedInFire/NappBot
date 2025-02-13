@@ -3,8 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("cmds")
-    .setDescription("List all available commands.")
-    .setDMPermission(true),
+    .setDescription("List all available commands."),
 
   async execute(interaction) {
     console.log(

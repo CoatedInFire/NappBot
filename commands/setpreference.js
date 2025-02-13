@@ -5,7 +5,6 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("setpreference")
     .setDescription("🔧 Set your sex preference.")
-    .setDMPermission(true)
     .addStringOption((option) =>
       option
         .setName("sex")

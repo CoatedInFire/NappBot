@@ -4,7 +4,6 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("kiss")
     .setDescription("💋 Kiss someone!")
-    .setDMPermission(true)
     .addUserOption((option) =>
       option
         .setName("user")

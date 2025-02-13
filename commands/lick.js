@@ -4,7 +4,6 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("lick")
     .setDescription("👅 Lick someone!")
-    .setDMPermission(true)
     .addUserOption((option) =>
       option
         .setName("user")

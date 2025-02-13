@@ -4,8 +4,7 @@ const { getUserPreference } = require("../utils/database");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("settings")
-    .setDescription("⚙️ View your saved settings.")
-    .setDMPermission(true),
+    .setDescription("⚙️ View your saved settings."),
 
   async execute(interaction) {
     try {
