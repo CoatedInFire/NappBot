@@ -38,14 +38,18 @@ client.commands = new Collection();
 client.once("ready", async () => {
   console.log("✅ Bot is fully loaded and ready to go!");
 
-  const commands = require("./commands"); // Correctly load from commands/index.js
+  const commands = require("./commands");
 
   commands.forEach((command) => {
-    // Load commands from the array exported by commands/index.js
-    client.commands.set(command.data.name, command);
+    if (command && command.data && command.data.name) {
+      // Check if command.data exists
+      client.commands.set(command.data.name, command);
+    } else {
+      console.warn("⚠️ Invalid command exported:", command); // Log the invalid command
+    }
   });
 
-  const eventFiles = fs // Load events (this part is fine)
+  const eventFiles = fs
     .readdirSync("./events")
     .filter((file) => file.endsWith(".js"));
 
