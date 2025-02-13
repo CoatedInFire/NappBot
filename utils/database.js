@@ -118,27 +118,44 @@ async function getUserInstallation(userId) {
 
 // ✅ Get User Preference
 async function getUserPreference(userId) {
+  console.log("getUserPreference called with userId (ORIGINAL):", userId);
+  console.log("Type of userId (ORIGINAL):", typeof userId);
+
+  const trimmedUserId = userId.trim();
+  console.log("Trimmed userId:", trimmedUserId);
+  console.log("Type of trimmedUserId:", typeof trimmedUserId);
+
+  // Convert to String (Just in Case):
+  const stringUserId = String(trimmedUserId); // Force string conversion
+  console.log("Stringified userId:", stringUserId);
+  console.log("Type of stringUserId:", typeof stringUserId);
+
   try {
-    const [rows] = await databasePool.execute(
-      "SELECT preference FROM user_preferences WHERE user_id = ?",
-      [userId]
-    );
+    const query = "SELECT preference FROM user_preferences WHERE user_id = ?";
+    console.log("Executing query:", query, [stringUserId]); // Log the query with the stringified ID
+
+    const [rows] = await databasePool.execute(query, [stringUserId]);
+
+    console.log("Database query result (rows):", rows); // Log the raw result
 
     if (rows.length === 0) {
-      console.log(`No preference found for user ${userId}, returning 'random'`);
-      return "random"; // Explicitly handle the case where no preference exists
+      console.log(`No preference found for user ${stringUserId}`);
+      return "random";
     }
 
-    const preference = rows[0].preference; // Access the preference from the first row
-    console.log(`Retrieved preference '${preference}' for user ${userId}`);
+    const preference = rows[0].preference;
+    console.log(
+      `Retrieved preference '${preference}' for user ${stringUserId}`
+    );
     return preference;
   } catch (error) {
     console.error(
-      `❌ MySQL Error (getUserPreference): ${error.code} - ${error.sqlMessage}`
+      `MySQL Error (getUserPreference): ${error.code} - ${error.sqlMessage}`
     );
-    return "random"; // Return "random" on error as well
+    return "random";
   }
 }
+
 // ✅ Set User Preference
 async function setUserPreference(userId, preference) {
   if (!["male", "female", "random"].includes(preference)) return false;
