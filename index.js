@@ -3,6 +3,7 @@ const { Client, Collection, GatewayIntentBits } = require("discord.js");
 const fs = require("fs");
 const { database } = require("./utils/database");
 const { fetchWalltakerImage } = require("./utils/fetchWalltaker");
+const { getE621PostId } = require("./utils/e621API");
 const {
   EmbedBuilder,
   ActionRowBuilder,
@@ -14,170 +15,175 @@ const {
   saveLastPostedImage,
 } = require("./commands/setwalltaker.js");
 
-require("./server"); // Express Server
+require("./server");
 
 // Ensure required environment variables
-if (!process.env.DISCORD_TOKEN) {
-  console.error(`❌ Missing environment variable: DISCORD_TOKEN`);
-  process.exit(1);
-}
-
-if (!process.env.CLIENT_ID) {
-  console.error(`❌ Missing environment variable: CLIENT_ID`);
+if (!process.env.DISCORD_TOKEN || !process.env.CLIENT_ID) {
+  console.error("❌ Missing required environment variables!");
   process.exit(1);
 }
 
 const client = new Client({
   intents: [
-    // ... your intents
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers,
   ],
 });
 
 client.commands = new Collection();
 
-client.once("ready", async () => {
-  console.log("✅ Bot is fully loaded and ready to go!");
-
-  const commands = require("./commands");
-
-  commands.forEach((command) => {
-    if (command && command.data && command.data.name) {
-      // Check if command.data exists
-      client.commands.set(command.data.name, command);
-    } else {
-      console.warn("⚠️ Invalid command exported:", command); // Log the invalid command
-    }
-  });
-
-  const eventFiles = fs
-    .readdirSync("./events")
-    .filter((file) => file.endsWith(".js"));
-
-  for (const file of eventFiles) {
-    const event = require(`./events/${file}`);
-    if (event.once) {
-      client.once(event.name, (...args) => event.execute(...args, client));
-    } else {
-      client.on(event.name, (...args) => event.execute(...args, client));
-    }
+// Load commands
+const commandFiles = fs
+  .readdirSync("./commands")
+  .filter((file) => file.endsWith(".js"));
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  if (command?.data?.name) {
+    client.commands.set(command.data.name, command);
+  } else {
+    console.warn(`⚠️ Invalid command skipped: ${file}`);
   }
+}
 
-  let lastPostedImages = {};
-  let lastCheckImages = {};
+// Load events
+const eventFiles = fs
+  .readdirSync("./events")
+  .filter((file) => file.endsWith(".js"));
+for (const file of eventFiles) {
+  const event = require(`./events/${file}`);
+  if (event.once) {
+    client.once(event.name, (...args) => event.execute(...args, client));
+  } else {
+    client.on(event.name, (...args) => event.execute(...args, client));
+  }
+}
 
-  async function fetchWalltakerSettings() {
+// Store last posted images to avoid duplicate posts
+let lastPostedImages = {};
+let lastCheckImages = {};
+
+async function fetchWalltakerSettings() {
+  try {
+    const [rows] = await database.execute("SELECT * FROM walltaker_settings;");
+    return rows;
+  } catch (error) {
+    console.error("❌ MySQL Error (fetchWalltakerSettings):", error);
+    return [];
+  }
+}
+
+async function postWalltakerImages() {
+  const settings = await fetchWalltakerSettings();
+
+  for (const { guild_id, feed_id, channel_id } of settings) {
     try {
-      const [rows] = await database.execute(
-        "SELECT * FROM walltaker_settings;"
+      const channel = await client.channels.fetch(channel_id);
+      if (!channel) {
+        console.error(`❌ Walltaker: Channel not found for guild ${guild_id}`);
+        continue;
+      }
+
+      const imageData = await fetchWalltakerImage(feed_id);
+      if (!imageData) {
+        console.log(
+          `⚠️ No image found in Walltaker feed for guild ${guild_id}`
+        );
+        continue;
+      }
+
+      const { imageUrl, sourceUrl, lastUpdatedBy } = imageData;
+      const cleanImageUrl = imageUrl?.trim() || null;
+
+      // Check if this image was already posted
+      const lastPosted = await getLastPostedImage(guild_id);
+      if (lastPosted === cleanImageUrl) {
+        console.log(
+          `✅ No new Walltaker image for guild ${guild_id}, skipping...`
+        );
+        continue;
+      }
+
+      console.log(
+        `🆕 New Walltaker image detected for guild ${guild_id}, sending now!`
       );
-      return rows;
-    } catch (error) {
-      console.error("❌ MySQL Error (fetchWalltakerSettings):", error);
-      return [];
-    }
-  }
+      await saveLastPostedImage(guild_id, cleanImageUrl);
+      lastPostedImages[guild_id] = cleanImageUrl;
 
-  async function postWalltakerImages() {
-    const settings = await fetchWalltakerSettings();
+      const updatedByUser = lastUpdatedBy?.trim() || "anon";
 
-    for (const { guild_id, feed_id, channel_id } of settings) {
-      try {
-        const channel = await client.channels.fetch(channel_id);
-        if (!channel) {
-          console.error(
-            `❌ Walltaker: Channel not found for guild ${guild_id}`
-          );
-          continue;
-        }
+      // Try to fetch e621 post ID from image URL
+      const e621PostId = await getE621PostId(cleanImageUrl);
+      const e621PostUrl = e621PostId
+        ? `https://e621.net/posts/${e621PostId}`
+        : null;
 
-        const imageData = await fetchWalltakerImage(feed_id);
-        if (!imageData) {
-          console.log(
-            `⚠️ No image found in Walltaker feed for guild ${guild_id}`
-          );
-          continue;
-        }
+      // Create embed
+      const embed = new EmbedBuilder()
+        .setTitle(`🖼️ Walltaker Image for Feed ${feed_id}`)
+        .setDescription(
+          "🔄 **Automatic Detection** - A new image has been set!"
+        )
+        .setImage(cleanImageUrl)
+        .setColor("#3498DB")
+        .setFooter({
+          text: `Image changed by: ${updatedByUser}`,
+          iconURL: "https://cdn-icons-png.flaticon.com/512/1828/1828490.png",
+        });
 
-        const { imageUrl, sourceUrl, lastUpdatedBy } = imageData;
-        const cleanImageUrl = imageUrl ? imageUrl.trim() : null;
+      // Create action buttons
+      const buttons = [
+        new ButtonBuilder()
+          .setLabel("🔗 View on Walltaker")
+          .setStyle(ButtonStyle.Link)
+          .setURL(sourceUrl),
+      ];
 
-        // ✅ Fetch last posted image from MySQL
-        const lastPosted = await getLastPostedImage(guild_id);
-
-        // ✅ Check if image is new
-        if (!lastPosted || lastPosted !== cleanImageUrl) {
-          console.log(
-            `🆕 New Walltaker image detected for guild ${guild_id}, sending now!`
-          );
-
-          await saveLastPostedImage(guild_id, cleanImageUrl);
-          lastPostedImages[guild_id] = cleanImageUrl;
-
-          // ✅ Determine the user who changed the image
-          const updatedByUser =
-            lastUpdatedBy && lastUpdatedBy.trim() !== ""
-              ? lastUpdatedBy
-              : "anon";
-
-          // ✅ Create Embed
-          const embed = new EmbedBuilder()
-            .setTitle(`🖼️ Walltaker Image for Feed ${feed_id}`)
-            .setDescription(
-              "🔄 **Automatic Detection** - A new image has been set!"
-            )
-            .setImage(cleanImageUrl)
-            .setColor("#3498DB")
-            .setFooter({
-              text: `Image changed by: ${updatedByUser}`,
-              iconURL:
-                "https://cdn-icons-png.flaticon.com/512/1828/1828490.png",
-            });
-
-          // ✅ Create Button
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setLabel("🔗 View on Walltaker")
-              .setStyle(ButtonStyle.Link)
-              .setURL(sourceUrl)
-          );
-
-          await channel.send({ embeds: [embed], components: [row] });
-        } else {
-          console.log(
-            `✅ No new Walltaker image for guild ${guild_id}, skipping...`
-          );
-        }
-      } catch (error) {
-        console.error(
-          `❌ Error posting Walltaker image for guild ${guild_id}:`,
-          error
+      if (e621PostUrl) {
+        buttons.push(
+          new ButtonBuilder()
+            .setLabel("🔍 View on e621")
+            .setStyle(ButtonStyle.Link)
+            .setURL(e621PostUrl)
         );
       }
+
+      const row = new ActionRowBuilder().addComponents(...buttons);
+
+      await channel.send({ embeds: [embed], components: [row] });
+    } catch (error) {
+      console.error(
+        `❌ Error posting Walltaker image for guild ${guild_id}:`,
+        error
+      );
     }
   }
+}
 
-  async function monitorWalltakerChanges() {
-    const settings = await fetchWalltakerSettings();
+async function monitorWalltakerChanges() {
+  const settings = await fetchWalltakerSettings();
 
-    for (const { guild_id, feed_id } of settings) {
-      try {
-        const imageData = await fetchWalltakerImage(feed_id);
-        if (!imageData) continue;
+  for (const { guild_id, feed_id } of settings) {
+    try {
+      const imageData = await fetchWalltakerImage(feed_id);
+      if (!imageData) continue;
 
-        const { imageUrl } = imageData;
+      const { imageUrl } = imageData;
 
-        if (lastCheckImages[guild_id] !== imageUrl) {
-          console.log(
-            `🚨 Change detected in Walltaker feed ${feed_id} for guild ${guild_id}, posting immediately!`
-          );
-          await postWalltakerImages();
-        }
-      } catch (error) {
-        console.error(`❌ Error checking Walltaker feed ${feed_id}:`, error);
+      if (lastCheckImages[guild_id] !== imageUrl) {
+        console.log(
+          `🚨 Change detected in Walltaker feed ${feed_id} for guild ${guild_id}, posting immediately!`
+        );
+        await postWalltakerImages();
       }
+    } catch (error) {
+      console.error(`❌ Error checking Walltaker feed ${feed_id}:`, error);
     }
   }
+}
 
+client.once("ready", async () => {
+  console.log("✅ Bot is fully loaded and ready to go!");
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
   setInterval(monitorWalltakerChanges, 30 * 1000);
   setInterval(postWalltakerImages, 10 * 60 * 1000);
@@ -187,10 +193,7 @@ client.login(process.env.DISCORD_TOKEN);
 
 database
   .query("SELECT 1")
-  .then(() => {
-    console.log("✅ Connected to MySQL!");
-    console.log("✅ Bot is fully loaded and ready to go!"); // Final confirmation
-  })
+  .then(() => console.log("✅ Connected to MySQL!"))
   .catch((err) => {
     console.error("❌ MySQL Connection Error:", err);
     process.exit(1);
