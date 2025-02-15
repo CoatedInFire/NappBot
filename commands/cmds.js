@@ -3,49 +3,47 @@ const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("cmds")
-    .setDescription("List all available commands."),
+    .setDescription("📜 View a list of all available commands."),
 
   async execute(interaction) {
     console.log(
-      `[DEBUG] /cmds used by ${interaction.user.tag} (${interaction.user.id})`
+      `⚡ [DEBUG] /cmds used by ${interaction.user.tag} (${interaction.user.id})`
     );
 
     try {
-      await interaction.deferReply({ ephemeral: false });
-      console.log("[DEBUG] Reply deferred");
+      await interaction.deferReply();
+      console.log("⌛ [DEBUG] Reply deferred");
 
-      // Get commands from client.commands
-      const commandList = interaction.client.commands
+      const commandList = interaction.client.commands;
+
+      if (!commandList || commandList.size === 0) {
+        console.warn("⚠️ [WARN] No commands found in client.commands.");
+        return interaction.editReply("⚠️ No commands available.");
+      }
+
+      const commandDescriptions = commandList
         .map((cmd) => `\`/${cmd.data.name}\` - ${cmd.data.description}`)
         .join("\n");
 
-      if (!commandList) {
-        console.warn("[WARN] No commands found in client.commands.");
-        return interaction.editReply("⚠️ No commands found.");
-      }
-
-      console.log("[DEBUG] Generated command list");
+      console.log("✅ [DEBUG] Successfully generated command list");
 
       const embed = new EmbedBuilder()
         .setTitle("📜 Available Commands")
         .setColor("#F1C40F")
-        .setDescription(commandList)
+        .setDescription(commandDescriptions)
         .setFooter({
-          text: `Total Commands: ${interaction.client.commands.size}`,
+          text: `Total Commands: ${commandList.size}`,
+          iconURL: interaction.client.user.displayAvatarURL(),
         })
         .setTimestamp();
 
       await interaction.editReply({ embeds: [embed] });
-      console.log("[DEBUG] Successfully sent command list");
+      console.log("✅ [DEBUG] Command list sent successfully");
     } catch (error) {
-      console.error("[ERROR] /cmds failed:", error);
-      try {
-        await interaction.editReply(
-          "⚠️ An error occurred while retrieving commands."
-        );
-      } catch (editError) {
-        console.error("[ERROR] Failed to send error response:", editError);
-      }
+      console.error("❌ [ERROR] /cmds failed:", error);
+      return interaction.editReply(
+        "⚠️ An error occurred while retrieving commands."
+      );
     }
   },
 };

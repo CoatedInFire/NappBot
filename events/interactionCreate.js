@@ -5,7 +5,6 @@ module.exports = {
       interaction.isChatInputCommand() ||
       interaction.isUserContextMenuCommand()
     ) {
-      // Check for BOTH!
       const command = client.commands.get(interaction.commandName);
 
       if (!command) {
@@ -17,11 +16,10 @@ module.exports = {
 
       try {
         console.log(`⚡ Executing: ${interaction.commandName}`);
-        await command.execute(interaction); // Call the command's execute function
+        await command.execute(interaction);
       } catch (error) {
         console.error(`❌ Error executing ${interaction.commandName}:`, error);
 
-        // IMPORTANT: Check if already replied to avoid double reply errors
         if (!interaction.replied) {
           if (interaction.deferred) {
             await interaction.editReply({

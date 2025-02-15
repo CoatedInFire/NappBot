@@ -1,10 +1,8 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
-const { database } = require("../utils/database"); // Use your MySQL database
+const { database } = require("../utils/database");
 
-// ✅ Ensure required tables exist
 async function ensureTablesExist() {
   try {
-    // Walltaker Settings Table
     await database.execute(`
       CREATE TABLE IF NOT EXISTS walltaker_settings (
         guild_id VARCHAR(50) PRIMARY KEY,
@@ -13,7 +11,6 @@ async function ensureTablesExist() {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
     `);
 
-    // ✅ New: Walltaker Last Posted Images Table
     await database.execute(`
       CREATE TABLE IF NOT EXISTS walltaker_last_posted (
         guild_id VARCHAR(50) PRIMARY KEY,
@@ -21,16 +18,13 @@ async function ensureTablesExist() {
       ) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
     `);
 
-    console.log(
-      "✅ Ensured 'walltaker_settings' and 'walltaker_last_posted' tables exist!"
-    );
+    console.log("✅ Walltaker tables ensured.");
   } catch (error) {
     console.error("❌ Error ensuring Walltaker tables exist:", error);
   }
 }
-ensureTablesExist(); // Call on bot startup
+ensureTablesExist();
 
-// ✅ Set Walltaker settings in MySQL
 async function setWalltakerSettings(guildId, feedId, channelId) {
   try {
     await database.execute(
@@ -46,7 +40,6 @@ async function setWalltakerSettings(guildId, feedId, channelId) {
   }
 }
 
-// ✅ Fetch Walltaker settings for a guild
 async function getWalltakerSettings(guildId) {
   try {
     const [rows] = await database.execute(
@@ -60,7 +53,6 @@ async function getWalltakerSettings(guildId) {
   }
 }
 
-// ✅ Fetch Last Posted Image (New Function)
 async function getLastPostedImage(guildId) {
   try {
     const [rows] = await database.execute(
@@ -74,7 +66,6 @@ async function getLastPostedImage(guildId) {
   }
 }
 
-// ✅ Save Last Posted Image (New Function)
 async function saveLastPostedImage(guildId, imageUrl) {
   try {
     await database.execute(
@@ -106,7 +97,7 @@ module.exports = {
         .setDescription("Select the channel to post images in.")
         .setRequired(true)
     )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild), // Restrict to admins
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction) {
     const feedId = interaction.options.getString("feed_id");
@@ -125,7 +116,6 @@ module.exports = {
     }
   },
 
-  // Export new functions
   getLastPostedImage,
   saveLastPostedImage,
 };

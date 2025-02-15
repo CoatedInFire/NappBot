@@ -67,9 +67,7 @@ module.exports = {
             .setImage(gifToUse)
             .setColor("#FFC0CB")
             .setTimestamp();
-
-        // *** KEY CHANGE: Send an initial reply (or defer) ***
-        await interaction.reply({ embeds: [embed] }); // Or await interaction.deferReply();
+        await interaction.reply({ embeds: [embed] });
 
     },
 };

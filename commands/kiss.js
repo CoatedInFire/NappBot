@@ -72,9 +72,7 @@ module.exports = {
       .setImage(customGif || randomGif)
       .setColor("#FF69B4")
       .setTimestamp();
-
-    // *** KEY CHANGE: Send an initial reply (or defer) ***
-    await interaction.reply({ embeds: [embed] }); // Or await interaction.deferReply();
+    await interaction.reply({ embeds: [embed] });
 
   },
 };

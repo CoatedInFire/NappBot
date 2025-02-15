@@ -42,22 +42,18 @@ module.exports = {
 
     let currentIndex = 0;
     let timeout; // Timeout reference
-    let message; // Store the message object
 
     function createEmbed(postData) {
       return new EmbedBuilder()
         .setTitle("🔞 e621 Image Result")
         .setDescription(
           `**Artist(s):** ${
-            postData.artists && postData.artists.length
-              ? postData.artists.join(", ")
+            postData.artists?.length ? postData.artists.join(", ") : "*Unknown*"
+          }\n**Characters:** ${
+            postData.characters?.length
+              ? postData.characters.join(", ")
               : "*Unknown*"
-          }\n` +
-            `**Characters:** ${
-              postData.characters && postData.characters.length
-                ? postData.characters.join(", ")
-                : "*Unknown*"
-            }`
+          }`
         )
         .setColor("#00549F")
         .setImage(
@@ -78,20 +74,19 @@ module.exports = {
           .setStyle(ButtonStyle.Link)
           .setURL(postDataArray[currentIndex].postUrl),
         new ButtonBuilder()
-          .setCustomId(`prev_${interaction.id}`)
+          .setCustomId(`prev`)
           .setLabel("⬅️ Previous")
           .setStyle(ButtonStyle.Primary)
           .setDisabled(currentIndex === 0),
         new ButtonBuilder()
-          .setCustomId(`next_${interaction.id}`)
+          .setCustomId(`next`)
           .setLabel("➡️ Next")
           .setStyle(ButtonStyle.Primary)
           .setDisabled(currentIndex === postDataArray.length - 1)
       );
     }
 
-    // Send the initial reply and store the message object:
-    message = await interaction.editReply({
+    const message = await interaction.editReply({
       embeds: [createEmbed(postDataArray[currentIndex])],
       components: [createRow()],
     });
@@ -103,55 +98,32 @@ module.exports = {
 
     function resetTimeout() {
       if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        collector.stop(); // Stop collector after timeout
-        // Edit the message to remove buttons AFTER timeout
-        message.edit({ components: [] }); // Edit the stored message object
-      }, 90000);
+      timeout = setTimeout(() => collector.stop(), 90000);
     }
 
-    resetTimeout(); // Start the timeout initially
+    resetTimeout();
 
     collector.on("collect", async (i) => {
-      if (i.customId === `next_${interaction.id}`) {
+      if (i.customId === "next") {
         currentIndex = Math.min(currentIndex + 1, postDataArray.length - 1);
-      } else if (i.customId === `prev_${interaction.id}`) {
+      } else if (i.customId === "prev") {
         currentIndex = Math.max(currentIndex - 1, 0);
       }
 
-      // Update the *message* using message.edit, not interaction.editReply:
       await i.update({
         embeds: [createEmbed(postDataArray[currentIndex])],
         components: [createRow()],
       });
 
-      resetTimeout(); // Refresh the timeout on every button press
+      resetTimeout();
     });
 
-    collector.on("end", async (collected) => {
-      if (collected.size === 0) {
-        // If the collector ended due to timeout
-        message.edit({ components: [] }); // Remove buttons after timeout
+    collector.on("end", async () => {
+      try {
+        await interaction.editReply({ components: [] });
+      } catch (error) {
+        console.warn("⚠️ Failed to remove buttons (likely already deleted)");
       }
-
-      // Handle interactions after the collector ends (if the user clicks a button):
-      message
-        .createMessageComponentCollector({
-          filter: (i) => i.user.id === interaction.user.id,
-          time: null, // No timeout
-        })
-        .on("collect", async (i) => {
-          if (i.customId === `next_${interaction.id}`) {
-            currentIndex = Math.min(currentIndex + 1, postDataArray.length - 1);
-          } else if (i.customId === `prev_${interaction.id}`) {
-            currentIndex = Math.max(currentIndex - 1, 0);
-          }
-
-          await i.update({
-            embeds: [createEmbed(postDataArray[currentIndex])],
-            components: [createRow()],
-          });
-        });
     });
   },
 };

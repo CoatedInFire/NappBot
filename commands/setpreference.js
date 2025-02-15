@@ -17,7 +17,7 @@ module.exports = {
     ),
 
   async execute(interaction) {
-    await interaction.deferReply({ ephemeral: true }); // ✅ Prevents "Already Replied" error
+    await interaction.deferReply({ ephemeral: true });
 
     const userId = interaction.user.id;
     const preference = interaction.options.getString("sex");

@@ -124,14 +124,11 @@ module.exports = {
       console.log("⌛ Deferring reply...");
       await interaction.deferReply();
 
-      // 🔍 Fetch recipient's sex preference
       const trimmedRecipientId = recipient.id.trim();
-      const stringRecipientId = String(trimmedRecipientId); // Force string conversion
-      let type = await getUserPreference(stringRecipientId); // Use the stringified ID
+      const stringRecipientId = String(trimmedRecipientId);
+      let type = await getUserPreference(stringRecipientId);
 
-      // Handle the case where no preference is found (crucially important)
       if (type === null) {
-        // Check for null, NOT "random"
         console.log("No explicit preference found, choosing randomly.");
         const validTypes = ["male", "female"];
         type = validTypes[Math.floor(Math.random() * validTypes.length)];
@@ -139,7 +136,6 @@ module.exports = {
         console.log(`Explicit preference found: ${type}`);
       }
 
-      // 🎭 Get pose from input or randomize
       let pose = interaction.options.getString("pose");
       const poseOptions = ["behind", "front"];
       if (!pose || !poseOptions.includes(pose)) {
@@ -148,7 +144,6 @@ module.exports = {
 
       console.log(`🔀 Selected Type: ${type}, Pose: ${pose}`);
 
-      // 🚨 Ensure images exist
       if (
         !images[type] ||
         !images[type][pose] ||
@@ -156,16 +151,13 @@ module.exports = {
       ) {
         console.error(`❌ No images found for: ${type}, ${pose}`);
         return interaction.editReply({
-          // Return immediately on error
           content: "❌ Something went wrong while choosing the image!",
         });
       }
 
-      // 📷 Select a random image
       const randomIndex = Math.floor(Math.random() * images[type][pose].length);
       image = images[type][pose][randomIndex];
 
-      // 💬 Randomized descriptions
       const descriptions = [
         `${sender} is having a steamy session with ${recipient}! 🔥`,
         `${recipient} and ${sender} are enjoying some quality time together. 😏`,
@@ -177,11 +169,10 @@ module.exports = {
 
       console.log(`📷 Selected Image Index: ${randomIndex}`);
 
-      // 🎨 Build and send embed
       embed = new EmbedBuilder()
         .setTitle("🔥 Steamy Interaction!")
         .setDescription(randomDescription)
-        .setImage(image) // Now image is guaranteed to be defined
+        .setImage(image)
         .setColor("#FF007F")
         .setTimestamp();
 
@@ -195,13 +186,11 @@ module.exports = {
           "❌ Something went wrong while processing your request.";
 
         if (embed) {
-          // Check if embed was created
-          await interaction.editReply({ content, embeds: [] }); // Clear embeds
+          await interaction.editReply({ content, embeds: [] });
         } else if (image) {
-          // Check if image was selected even if embed creation failed
-          await interaction.editReply({ content }); // Send content only
+          await interaction.editReply({ content });
         } else {
-          await interaction.editReply({ content }); // Send content only
+          await interaction.editReply({ content });
         }
       } catch (nestedError) {
         console.error(

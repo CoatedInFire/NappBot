@@ -33,13 +33,13 @@ module.exports = {
           .setTitle("🧵 Random /vp/ Thread")
           .setDescription(
             decode(thread.comment)
-              .replace(/<br\s*\/?>/g, "\n") // Convert HTML line breaks to newlines
-              .slice(0, 4096) // Ensure text doesn't exceed Discord's limit
+              .replace(/<br\s*\/?>/g, "\n")
+              .slice(0, 4096)
           )
           .setColor("#FFCC00")
           .setURL(thread.threadUrl)
           .setFooter({
-            text: `⭐ Thread ID: ${thread.threadId}`, // 📝 Thread ID for reference
+            text: `⭐ Thread ID: ${thread.threadId}`,
           })
           .setImage(thread.thumbnail || null);
       }
@@ -49,7 +49,7 @@ module.exports = {
           new ButtonBuilder()
             .setLabel("🔗 View on 4chan")
             .setStyle(ButtonStyle.Link)
-            .setURL(threadData.threadUrl), // Dynamically update URL
+            .setURL(threadData.threadUrl),
           new ButtonBuilder()
             .setCustomId("random_vp")
             .setLabel("🎲 New Random Thread")

@@ -5,7 +5,6 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
-
 const { fetchE621User, fetchE621Images } = require("../utils/e621API");
 
 module.exports = {
@@ -21,26 +20,15 @@ module.exports = {
 
   async execute(interaction) {
     const username = interaction.options.getString("username");
-    await interaction.deferReply(); // Defer reply while fetching data
+    await interaction.deferReply();
 
-    let profileData;
-    try {
-      profileData = await fetchE621User(username);
-    } catch (error) {
-      console.error("❌ Error fetching e621 user:", error);
-      return interaction.editReply(
-        "⚠️ Failed to fetch user data. Try again later."
-      );
-    }
-
+    let profileData = await fetchE621User(username);
     if (!profileData) {
       return interaction.editReply("❌ User not found or API error.");
     }
 
-    // Fetch latest uploads (or fall back to favorites)
     let currentView = "uploads";
     let imageData = await fetchE621Images([`user:${username}`], 3);
-
     if (!imageData || imageData.length === 0) {
       imageData = await fetchE621Images([`fav:${username}`], 3);
       currentView = "favorites";
@@ -106,42 +94,47 @@ module.exports = {
         });
     }
 
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("toggle_view")
-        .setLabel(
-          `Switch to ${currentView === "uploads" ? "Favorites" : "Uploads"}`
-        )
-        .setStyle(ButtonStyle.Primary)
-    );
+    function createActionRow() {
+      return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("toggle_view")
+          .setLabel(
+            `Switch to ${currentView === "uploads" ? "Favorites" : "Uploads"}`
+          )
+          .setStyle(ButtonStyle.Primary)
+      );
+    }
 
     const message = await interaction.editReply({
       embeds: [createEmbed()],
-      components: [row],
+      components: [createActionRow()],
     });
 
-    // Button interaction collector
     const filter = (i) => i.user.id === interaction.user.id;
     const collector = message.createMessageComponentCollector({
       filter,
-      time: 60000, // 1 minute duration
+      time: 60000,
     });
 
     collector.on("collect", async (i) => {
       currentView = currentView === "uploads" ? "favorites" : "uploads";
-      imageData = await fetchE621Images(
+      const newImages = await fetchE621Images(
         [`${currentView === "uploads" ? "user" : "fav"}:${username}`],
         3
       );
 
+      if (newImages && newImages.length > 0) {
+        imageData = newImages;
+      }
+
       await i.update({
         embeds: [createEmbed()],
-        components: [row],
+        components: [createActionRow()],
       });
     });
 
     collector.on("end", async () => {
-      await interaction.editReply({ components: [] }); // Removes buttons when interaction expires
+      await interaction.editReply({ components: [] });
     });
   },
 };
