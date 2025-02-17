@@ -11,7 +11,7 @@ const { decode } = require("html-entities");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("vp")
-    .setDescription("Fetches a random /vp/ thread from 4chan."),
+    .setDescription("🧵 Fetches a random /vp/ thread from 4chan."),
 
   async execute(interaction) {
     try {
