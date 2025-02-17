@@ -1,12 +1,21 @@
 # NappBot
 
 <p align="center">
-  <img src="https://img.shields.io/discord/123456789012345678?color=5865F2&logo=discord&logoColor=white" />
-  <img src="https://img.shields.io/npm/v/your-package-name?color=blue&logo=npm" />
-  <img src="https://img.shields.io/npm/dm/your-package-name?color=brightgreen" />
-  <img src="https://img.shields.io/badge/Tests-No%20Status-lightgrey" />
-  <img src="https://img.shields.io/github/last-commit/AetCloud/NappBot?color=green" />
-  <img src="https://img.shields.io/codecov/c/github/AetCloud/NappBot?color=red" />
+  <a href="https://railway.app">
+    <img src="https://img.shields.io/badge/Powered%20by-Railway-%235C4EE5?style=for-the-badge&logo=railway" alt="Powered by Railway">
+  </a>
+  <a href="https://discord.gg/7xFAdhG7Tx">
+    <img src="https://img.shields.io/discord/750951332378050560?color=5865F2&logo=discord&logoColor=white&style=for-the-badge" alt="Discord">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/AetCloud/NappBot/commits/main">
+    <img src="https://img.shields.io/github/last-commit/AetCloud/NappBot?style=flat&color=brightgreen" alt="Last Commit">
+  </a>
+  <a href="https://github.com/AetCloud/NappBot/issues">
+    <img src="https://img.shields.io/github/issues/AetCloud/NappBot?color=yellow" alt="GitHub Issues">
+  </a>
 </p>
 
 ---
