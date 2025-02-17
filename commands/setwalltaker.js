@@ -100,9 +100,31 @@ module.exports = {
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
 
   async execute(interaction) {
+    if (!interaction.guild) {
+      return interaction.reply({
+        content: "❌ This command can only be used in a server.",
+        ephemeral: true,
+      });
+    }
+
+    if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+      return interaction.reply({
+        content:
+          "❌ You must have the **Manage Server** permission to use this command.",
+        ephemeral: true,
+      });
+    }
+
     const feedId = interaction.options.getString("feed_id");
     const channel = interaction.options.getChannel("channel");
     const guildId = interaction.guild.id;
+
+    if (!channel.isTextBased()) {
+      return interaction.reply({
+        content: "❌ You must select a **text channel**.",
+        ephemeral: true,
+      });
+    }
 
     const success = await setWalltakerSettings(guildId, feedId, channel.id);
     if (success) {
