@@ -74,7 +74,7 @@ const images = {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("fuck")
-    .setDescription("🔥 Engage in a steamy interaction with another user.")
+    .setDescription("🔥 Give someone some love~")
     .addUserOption((option) =>
       option
         .setName("user")
