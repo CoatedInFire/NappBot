@@ -1,15 +1,6 @@
 # NappBot
 
 <p align="center">
-  <a href="https://railway.app">
-    <img src="https://img.shields.io/badge/Powered%20by-Railway-%235C4EE5?style=for-the-badge&logo=railway" alt="Powered by Railway">
-  </a>
-  <a href="https://discord.gg/7xFAdhG7Tx">
-    <img src="https://img.shields.io/discord/750951332378050560?color=5865F2&logo=discord&logoColor=white&style=for-the-badge" alt="Discord">
-  </a>
-</p>
-
-<p align="center">
   <a href="https://github.com/AetCloud/NappBot/commits/main">
     <img src="https://img.shields.io/github/last-commit/AetCloud/NappBot?style=flat&color=brightgreen" alt="Last Commit">
   </a>
@@ -17,6 +8,22 @@
     <img src="https://img.shields.io/github/issues/AetCloud/NappBot?color=yellow" alt="GitHub Issues">
   </a>
 </p>
+
+<p align="center">
+  <a href="https://railway.app">
+    <img src="https://img.shields.io/badge/Powered%20by-Railway-%235C4EE5?style=for-the-badge&logo=railway" alt="Powered by Railway">
+  </a>
+  <a href="https://walltaker.joi.how/">
+    <img src="https://img.shields.io/badge/Powered%20by-WallTaker-%235C4EE5?style=for-the-badge" alt="Powered by Walltaker">
+  </a>
+  <a href="https://e621.net/">
+    <img src="https://img.shields.io/badge/Powered%20by-e621.net-%2300549F?style=for-the-badge" alt="Powered by e621API">
+  </a>
+  <a href="https://discord.gg/7xFAdhG7Tx">
+    <img src="https://img.shields.io/discord/750951332378050560?color=5865F2&logo=discord&logoColor=white&style=for-the-badge" alt="Discord">
+  </a>
+</p>
+
 
 ---
 
@@ -32,8 +39,7 @@
 
 ✅ **Slash Commands** – No outdated prefixes, just `/commands`  
 🎭 **Customization** – Configure bot settings per server  
-🎶 **Music & Fun** – Play music, create memes, and more  
-⚡ **Fast Hosting** – Hosted on **Railway** for smooth performance  
+📜 **Utility** – Utility features, like WT Autoposting  
 🔞 **NSFW Features** – Optional for servers that allow it  
 
 ---
