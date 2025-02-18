@@ -12,8 +12,6 @@ async function fetchVPThreads() {
 
     const data = await response.json();
     if (!data || data.length === 0) return null;
-
-    // Flatten all threads from the first 10 pages
     const allThreads = data.slice(0, 10).flatMap((page) => page.threads);
     if (allThreads.length === 0) return null;
 
@@ -22,8 +20,8 @@ async function fetchVPThreads() {
       subject: decode(thread.sub || "No title"),
       comment: decode(
         (thread.com || "No description")
-          .replace(/<br\s*\/?>/g, "\n") // Convert <br> to newlines
-          .replace(/<[^>]*>/g, "") // Remove other HTML tags
+          .replace(/<br\s*\/?>/g, "\n")
+          .replace(/<[^>]*>/g, "")
       ),
       threadUrl: `https://boards.4channel.org/vp/thread/${thread.no}`,
       thumbnail: thread.tim ? `https://i.4cdn.org/vp/${thread.tim}s.jpg` : null,

@@ -33,8 +33,6 @@ async function fetchWalltakerImage(feedId) {
       console.warn("⚠️ No image found in Walltaker feed.");
       return null;
     }
-
-    // ✅ Trim URL to remove any unwanted characters
     const imageUrl = data.post_url ? data.post_url.trim() : null;
     console.log(`✅ Processed Walltaker Image URL: ${imageUrl}`);
 
@@ -43,7 +41,7 @@ async function fetchWalltakerImage(feedId) {
       imageUrl,
       sourceUrl: `https://walltaker.joi.how/links/${feedId}`,
       lastUpdatedBy:
-        data.set_by && data.set_by.trim() !== "" ? data.set_by : "anon", // ✅ Fix user display
+        data.set_by && data.set_by.trim() !== "" ? data.set_by : "anon",
     };
   } catch (error) {
     console.error(

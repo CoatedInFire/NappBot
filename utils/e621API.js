@@ -1,6 +1,5 @@
 const fetch = require("node-fetch");
 
-// e621 Default Blacklist (Excluded tags)
 const DEFAULT_BLACKLIST = [
   "cub",
   "toddlercon",
@@ -12,7 +11,6 @@ const DEFAULT_BLACKLIST = [
   "vore",
 ];
 
-// e621 API Headers
 const API_HEADERS = {
   "User-Agent": "NappBot/1.0 (by Napp on e621)",
 };
@@ -31,12 +29,10 @@ async function fetchE621Images(tags = [], count = 10) {
     return null;
   }
 
-  // Default to high-rated posts if no tags provided
   if (tags.length === 0) {
     tags.push("score:>=100");
   }
 
-  // Apply blacklist filtering
   const query = [...tags, ...DEFAULT_BLACKLIST.map((tag) => `-${tag}`)].join(
     "+"
   );
@@ -57,8 +53,6 @@ async function fetchE621Images(tags = [], count = 10) {
 
     const data = await response.json();
     if (!data.posts || data.posts.length === 0) return null;
-
-    // Fisher-Yates shuffle for better randomization
     const shuffledPosts = [...data.posts].sort(() => Math.random() - 0.5);
 
     return shuffledPosts
@@ -134,7 +128,7 @@ async function fetchE621User(username) {
  * @returns {number|null} - The e621 post ID or null if not found.
  */
 async function getE621PostId(imageUrl) {
-  if (!imageUrl.includes("e621.net")) return null; // Only process e621 images
+  if (!imageUrl.includes("e621.net")) return null;
 
   const apiKey = process.env.E621_API_KEY;
   if (!apiKey) {
@@ -161,14 +155,13 @@ async function getE621PostId(imageUrl) {
 
     const data = await response.json();
     if (data.posts && data.posts.length > 0) {
-      return data.posts[0].id; // ✅ Return the post ID if found
+      return data.posts[0].id;
     }
   } catch (error) {
     console.error("❌ Error fetching e621 post ID:", error.message);
   }
 
-  return null; // ❌ No match found
+  return null;
 }
 
-// ✅ Export functions
 module.exports = { fetchE621Images, fetchE621User, getE621PostId };

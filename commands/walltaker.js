@@ -34,7 +34,6 @@ module.exports = {
     let targetChannel = interaction.options.getChannel("channel");
 
     try {
-      // Fetch from database if no feed ID is provided
       if (!feedId) {
         const [settings] = await database.execute(
           "SELECT feed_id, channel_id FROM walltaker_settings WHERE guild_id = ? LIMIT 1",
@@ -57,10 +56,7 @@ module.exports = {
         }
       }
 
-      // Default to command channel if database channel is invalid
       if (!targetChannel) targetChannel = interaction.channel;
-
-      // Fetch latest Walltaker image
       const imageData = await fetchWalltakerImage(feedId);
       if (!imageData) {
         return interaction.editReply({
@@ -70,14 +66,11 @@ module.exports = {
       }
 
       const { imageUrl, sourceUrl, lastUpdatedBy } = imageData;
-
-      // Fetch e621 post ID
       const e621PostId = await getE621PostId(imageUrl);
       const e621PostUrl = e621PostId
         ? `https://e621.net/posts/${e621PostId}`
         : null;
 
-      // Create Embed
       const embed = new EmbedBuilder()
         .setTitle(`🖼️ Walltaker Image for Feed ${feedId}`)
         .setImage(imageUrl)
@@ -87,7 +80,6 @@ module.exports = {
           iconURL: interaction.user.displayAvatarURL(),
         });
 
-      // Create action buttons
       const buttons = [
         new ButtonBuilder()
           .setLabel("🔗 View on Walltaker")
@@ -105,10 +97,7 @@ module.exports = {
       }
 
       const row = new ActionRowBuilder().addComponents(...buttons);
-
-      // Send message to the chosen channel
       await targetChannel.send({ embeds: [embed], components: [row] });
-
       return interaction.editReply({
         content: `✅ Image posted in ${targetChannel}.`,
         ephemeral: true,
