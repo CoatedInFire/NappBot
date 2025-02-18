@@ -33,12 +33,12 @@
 ✅ **Slash Commands** – No outdated prefixes, just `/commands`  
 🎭 **Customization** – Configure bot settings per server  
 🎶 **Music & Fun** – Play music, create memes, and more  
-⚡ **Fast Hosting** – Hosted on **Railway** for smooth performance
-🔞 **NSFW Features** – Optional for servers that allow it 
+⚡ **Fast Hosting** – Hosted on **Railway** for smooth performance  
+🔞 **NSFW Features** – Optional for servers that allow it  
 
 ---
 
-## 📜 Commands  
+## 📜 Commands
 
 To see all available commands, run:  
 
@@ -50,7 +50,7 @@ To see all available commands, run:
 
 ## 🚀 Installation
 
-### *1️⃣ Invite the Bot**  
+### **1️⃣ Invite the Bot**  
 👉 **[Click here to add NappBot to your server](https://discord.com/oauth2/authorize?client_id=765387268557897799)**  
 
 ### **2️⃣ Set Permissions**  
