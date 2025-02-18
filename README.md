@@ -29,7 +29,7 @@
 
 ## About  
 
-**NappBot** is an **18+ Discord bot** designed for mature communities. It provides a mix of **fun, automation, NSFW content, and utility features** to enhance your server experience.  
+**NappBot** is an **18+ Discord bot** designed for mature communities. It provides a mix of **fun and utility features** to enhance your server.  
 
 **Built with modern slash commands**, NappBot is easy to use and continuously updated.
 
