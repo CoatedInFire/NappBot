@@ -23,7 +23,7 @@ module.exports = {
     const tags = interaction.options.getString("tags")?.split(" ") || [];
 
     if (tags.length === 0) {
-      tags.push("score:>=100"); // Fetch top-rated posts
+      tags.push("score:>=100");
     }
 
     await interaction.deferReply();
@@ -41,7 +41,7 @@ module.exports = {
     }
 
     let currentIndex = 0;
-    let timeout; // Timeout reference
+    let timeout;
 
     function createEmbed(postData) {
       return new EmbedBuilder()
