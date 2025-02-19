@@ -50,10 +50,8 @@ try {
   process.exit(1);
 }
 
-// ✅ Ensure tables exist
 async function ensureTablesExist() {
   try {
-    // User Preferences Table
     await databasePool.execute(`
       CREATE TABLE IF NOT EXISTS user_preferences (
         user_id VARCHAR(50) PRIMARY KEY,
@@ -61,7 +59,6 @@ async function ensureTablesExist() {
       );
     `);
 
-    // User Installations Table
     await databasePool.execute(`
       CREATE TABLE IF NOT EXISTS user_installations (
         user_id VARCHAR(50) PRIMARY KEY,
@@ -83,7 +80,6 @@ async function ensureTablesExist() {
 }
 ensureTablesExist();
 
-// ✅ Store User Installation Data
 async function storeUserInstallation(userId, accessToken, refreshToken) {
   console.log("storeUserInstallation called with userId:", userId);
   console.log("Type of userId:", typeof userId);
@@ -103,7 +99,6 @@ async function storeUserInstallation(userId, accessToken, refreshToken) {
   }
 }
 
-// ✅ Get User Installation Data
 async function getUserInstallation(userId) {
   try {
     const [rows] = await databasePool.execute(
@@ -119,22 +114,21 @@ async function getUserInstallation(userId) {
   }
 }
 
-// ✅ Get User Preference
 async function getUserPreference(userId) {
   const trimmedUserId = userId.trim();
   const stringUserId = String(trimmedUserId);
 
   try {
     const query = "SELECT preference FROM user_preferences WHERE user_id = ?";
-    console.log("Executing query:", query, [stringUserId]); // Log the query with the stringified ID
+    console.log("Executing query:", query, [stringUserId]);
 
     const [rows] = await databasePool.execute(query, [stringUserId]);
 
-    console.log("Database query result (rows):", rows); // Log the raw result
+    console.log("Database query result (rows):", rows);
 
     if (rows.length === 0) {
       console.log(`No preference found for user ${stringUserId}`);
-      return null; // Return null when no preference is found
+      return null;
     }
 
     const preference = rows[0].preference;
@@ -150,7 +144,6 @@ async function getUserPreference(userId) {
   }
 }
 
-// ✅ Set User Preference
 async function setUserPreference(userId, preference) {
   if (!["male", "female", "random"].includes(preference)) return false;
   try {
@@ -167,7 +160,6 @@ async function setUserPreference(userId, preference) {
   }
 }
 
-// ✅ Export all functions
 module.exports = {
   database: databasePool,
   getUserPreference,

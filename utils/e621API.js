@@ -17,7 +17,6 @@ const API_HEADERS = {
 
 /**
  * Fetch e621 images based on search tags.
- * If no tags are given, pulls from top 100 latest images with a score >= 100.
  * @param {Array} tags - Search tags.
  * @param {number} count - Number of images to return.
  * @returns {Array} - Array of image data objects.

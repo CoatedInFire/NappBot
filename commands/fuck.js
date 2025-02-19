@@ -102,11 +102,9 @@ module.exports = {
       const sender = interaction.user;
       const recipient = interaction.options.getUser("user");
 
-      // Pre-checks (reply immediately if failing)
       if (!recipient) {
         console.log("❌ No recipient provided.");
         return interaction.reply({
-          // Return here is essential
           content: "❌ You must mention someone!",
           ephemeral: true,
         });
@@ -115,7 +113,6 @@ module.exports = {
       if (recipient.id === sender.id) {
         console.log("❌ User tried to target themselves.");
         return interaction.reply({
-          // Return here is essential
           content: "❌ You can't do this to yourself...",
           ephemeral: true,
         });

@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const querystring = require("querystring");
-const { storeUserInstallation } = require("./utils/database"); // ✅ Import database functions
+const { storeUserInstallation } = require("./utils/database");
 
 const app = express();
 
@@ -15,7 +15,6 @@ app.use(cors());
 
 app.get("/", (req, res) => res.send("Bot is alive!"));
 
-// Discord OAuth2 Configuration
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI =
@@ -23,7 +22,6 @@ const REDIRECT_URI =
   "https://web-production-c3a9.up.railway.app/oauth/callback";
 const DISCORD_API = "https://discord.com/api";
 
-// OAuth2 Callback Endpoint
 app.get("/oauth/callback", async (req, res) => {
   const code = req.query.code;
   if (!code) {
@@ -31,7 +29,6 @@ app.get("/oauth/callback", async (req, res) => {
   }
 
   try {
-    // Exchange code for access and refresh tokens
     const tokenResponse = await axios.post(
       `${DISCORD_API}/oauth2/token`,
       querystring.stringify({
@@ -47,27 +44,24 @@ app.get("/oauth/callback", async (req, res) => {
 
     const { access_token, refresh_token } = tokenResponse.data;
 
-    // Fetch user data
     const userResponse = await axios.get(`${DISCORD_API}/users/@me`, {
       headers: { Authorization: `Bearer ${access_token}` },
     });
 
-    console.log("Discord user response:", userResponse.data); // Log the entire response
+    console.log("Discord user response:", userResponse.data);
 
     const userId = userResponse.data.id;
     console.log("Retrieved userId:", userId);
     const username = userResponse.data.username;
 
-    console.log("Retrieved userId:", userId); // Log the userId
-    console.log("Type of userId:", typeof userId); // Log the type
+    console.log("Retrieved userId:", userId);
+    console.log("Type of userId:", typeof userId);
 
     if (!userId) {
-      // Check if userId is null or undefined
       console.error("User ID is missing from Discord response!");
       return res.status(500).send("❌ Authentication failed. User ID missing.");
     }
 
-    // ✅ Store user installation data
     const success = await storeUserInstallation(
       userId,
       access_token,
