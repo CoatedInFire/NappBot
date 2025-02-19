@@ -1,4 +1,5 @@
 require("dotenv").config();
+const fs = require("fs");
 const { REST, Routes } = require("discord.js");
 const commands = require("./commands");
 
@@ -10,11 +11,14 @@ if (!clientId || !token) {
   process.exit(1);
 }
 
-const allCommands = commands.map(cmd => {
+const allCommands = commands.map((cmd) => {
   const json = cmd.data.toJSON();
   json.integration_types = [1];
   return json;
 });
+
+fs.writeFileSync("commands.json", JSON.stringify(allCommands, null, 2));
+console.log("📄 Saved commands to commands.json");
 
 const rest = new REST({ version: "10" }).setToken(token);
 
@@ -32,7 +36,7 @@ const rest = new REST({ version: "10" }).setToken(token);
     console.log(`🔄 Registering ${allCommands.length} global commands...`);
     await rest.put(Routes.applicationCommands(clientId), { body: allCommands });
 
-    console.log("✅ Successfully registered global commands with DM support.");
+    console.log("✅ Successfully registered global commands.");
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
   }
