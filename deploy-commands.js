@@ -22,7 +22,7 @@ for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
   if (command?.data?.toJSON) {
     const json = command.data.toJSON();
-    json.integration_types = [1];
+    json.integration_types = [0, 1];
     allCommands.push(json);
   } else {
     console.warn(`⚠️ Skipping invalid command file: ${file}`);
