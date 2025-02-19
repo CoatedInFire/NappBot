@@ -17,7 +17,7 @@ const {
 
 require("./server");
 
-if (!process.env.DISCORD_TOKEN || !process.env.CLIENT_ID) {
+if (!process.env.TOKEN || !process.env.CLIENT_ID) {
   console.error("❌ Missing required environment variables!");
   process.exit(1);
 }
@@ -110,7 +110,7 @@ client.once("ready", async () => {
   setInterval(postWalltakerImages, 10 * 60 * 1000);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.TOKEN);
 
 database
   .query("SELECT 1")

@@ -1,21 +1,33 @@
 require("dotenv").config();
 const fs = require("fs");
 const { REST, Routes } = require("discord.js");
-const commands = require("./commands");
 
 const clientId = process.env.CLIENT_ID;
 const token = process.env.TOKEN;
 
 if (!clientId || !token) {
-  console.error("❌ Missing CLIENT_ID or TOKEN in environment variables.");
+  console.error(
+    "❌ Missing CLIENT_ID or TOKEN in environment variables."
+  );
   process.exit(1);
 }
 
-const allCommands = commands.map((cmd) => {
-  const json = cmd.data.toJSON();
-  json.integration_types = [1];
-  return json;
-});
+
+const commandFiles = fs
+  .readdirSync("./commands")
+  .filter((file) => file.endsWith(".js"));
+const allCommands = [];
+
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  if (command?.data?.toJSON) {
+    const json = command.data.toJSON();
+    json.integration_types = [1];
+    allCommands.push(json);
+  } else {
+    console.warn(`⚠️ Skipping invalid command file: ${file}`);
+  }
+}
 
 fs.writeFileSync("commands.json", JSON.stringify(allCommands, null, 2));
 console.log("📄 Saved commands to commands.json");
