@@ -19,9 +19,7 @@ const allCommands = [];
 for (const file of commandFiles) {
   const command = require(`./commands/${file}`);
   if (command?.data?.toJSON) {
-    const json = command.data.toJSON();
-    json.integration_types = [0, 1];
-    allCommands.push(json);
+    allCommands.push(command.data.toJSON());
   } else {
     console.warn(`⚠️ Skipping invalid command file: ${file}`);
   }

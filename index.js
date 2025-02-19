@@ -35,36 +35,20 @@ const client = new Client({
 
 client.commands = new Collection();
 
-const { spawn } = require("child_process");
+const commandFiles = fs
+  .readdirSync("./commands")
+  .filter((file) => file.endsWith(".js"));
 
-console.log("🚀 Deploying commands...");
-
-const deployProcess = spawn("node", ["deploy-commands.js"], {
-  stdio: "inherit",
-});
-
-deployProcess.on("exit", (code) => {
-  if (code === 0) {
-    console.log("✅ Commands deployed successfully.");
-    loadCommands();
+for (const file of commandFiles) {
+  const command = require(`./commands/${file}`);
+  if (command.data && command.execute) {
+    client.commands.set(command.data.name, command);
   } else {
-    console.error(`❌ Command deployment failed with exit code ${code}.`);
+    console.warn(`⚠️ Skipping invalid command file: ${file}`);
   }
-});
-
-function loadCommands() {
-  if (!fs.existsSync("./commands.json")) {
-    console.error("❌ commands.json not found! Skipping command loading.");
-    return;
-  }
-
-  const commands = JSON.parse(fs.readFileSync("./commands.json", "utf8"));
-  for (const cmd of commands) {
-    client.commands.set(cmd.name, cmd);
-  }
-
-  console.log(`📜 Loaded ${client.commands.size} commands.`);
 }
+
+console.log(`📜 Loaded ${client.commands.size} commands.`);
 
 const eventFiles = fs
   .readdirSync("./events")
