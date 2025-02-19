@@ -35,18 +35,20 @@ const client = new Client({
 
 client.commands = new Collection();
 
-const { exec } = require("child_process");
+const { spawn } = require("child_process");
+
 console.log("🚀 Deploying commands...");
-exec("node deploy-commands.js", (error, stdout, stderr) => {
-  if (error) {
-    console.error(`❌ Command deployment error: ${error.message}`);
-    return;
+
+const deployProcess = spawn("node", ["deploy-commands.js"], {
+  stdio: "inherit",
+});
+
+deployProcess.on("exit", (code) => {
+  if (code === 0) {
+    console.log("✅ Commands deployed successfully.");
+  } else {
+    console.error(`❌ Command deployment failed with exit code ${code}.`);
   }
-  if (stderr) {
-    console.error(`⚠️ Command deployment stderr: ${stderr}`);
-    return;
-  }
-  console.log(`✅ Command deployment output:\n${stdout}`);
 });
 
 const commandFiles = fs
@@ -61,7 +63,6 @@ for (const file of commandFiles) {
     console.warn(`⚠️ Skipping invalid command: ${file} - Missing 'data.name'`);
   }
 }
-
 
 const eventFiles = fs
   .readdirSync("./events")
