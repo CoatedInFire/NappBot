@@ -1,7 +1,6 @@
 require("dotenv").config();
 const { Client, Collection, GatewayIntentBits } = require("discord.js");
 const fs = require("fs");
-const { exec } = require("child_process");
 const { database } = require("./utils/database");
 const { fetchWalltakerImage } = require("./utils/fetchWalltaker");
 const { getE621PostId } = require("./utils/e621API");
@@ -18,7 +17,10 @@ const {
 
 require("./server");
 
-if (!process.env.TOKEN || !process.env.CLIENT_ID) {
+const TOKEN = process.env.TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+
+if (!TOKEN || !CLIENT_ID) {
   console.error("❌ Missing required environment variables!");
   process.exit(1);
 }
@@ -33,6 +35,7 @@ const client = new Client({
 
 client.commands = new Collection();
 
+const { exec } = require("child_process");
 console.log("🚀 Deploying commands...");
 exec("node deploy-commands.js", (error, stdout, stderr) => {
   if (error) {
@@ -59,6 +62,7 @@ for (const file of commandFiles) {
   }
 }
 
+
 const eventFiles = fs
   .readdirSync("./events")
   .filter((file) => file.endsWith(".js"));
@@ -71,6 +75,9 @@ for (const file of eventFiles) {
     client.on(event.name, (...args) => event.execute(...args, client));
   }
 }
+
+let lastPostedImages = {};
+let lastCheckImages = {};
 
 async function fetchWalltakerSettings() {
   try {
@@ -116,6 +123,7 @@ async function postWalltakerImages() {
         `🆕 New Walltaker image detected for guild ${guild_id}, sending now!`
       );
       await saveLastPostedImage(guild_id, cleanImageUrl);
+      lastPostedImages[guild_id] = cleanImageUrl;
 
       const updatedByUser = lastUpdatedBy?.trim() || "anon";
 
@@ -169,9 +177,18 @@ async function monitorWalltakerChanges() {
 
   for (const { guild_id, feed_id } of settings) {
     try {
-      const imageData = await fetchWalltakerImage(feed_id);
-      if (!imageData) continue;
+      let imageData;
+      try {
+        imageData = await fetchWalltakerImage(feed_id);
+      } catch (error) {
+        console.error(
+          `❌ Error fetching Walltaker image for feed ${feed_id}:`,
+          error
+        );
+        continue;
+      }
 
+      if (!imageData) continue;
       const { imageUrl } = imageData;
 
       if (lastCheckImages[guild_id] !== imageUrl) {
@@ -189,11 +206,12 @@ async function monitorWalltakerChanges() {
 client.once("ready", async () => {
   console.log("✅ Bot is fully loaded and ready to go!");
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-  setInterval(monitorWalltakerChanges, 30 * 1000);
+  setInterval(monitorWalltakerChanges, 45 * 1000);
   setInterval(postWalltakerImages, 10 * 60 * 1000);
 });
 
-console.log("✅ MySQL Connection Pool Created");
+client.login(TOKEN);
+
 database
   .query("SELECT 1")
   .then(() => console.log("✅ Connected to MySQL!"))
@@ -201,5 +219,3 @@ database
     console.error("❌ MySQL Connection Error:", err);
     process.exit(1);
   });
-
-client.login(process.env.TOKEN);
