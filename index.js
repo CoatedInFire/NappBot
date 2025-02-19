@@ -46,22 +46,24 @@ const deployProcess = spawn("node", ["deploy-commands.js"], {
 deployProcess.on("exit", (code) => {
   if (code === 0) {
     console.log("✅ Commands deployed successfully.");
+    loadCommands();
   } else {
     console.error(`❌ Command deployment failed with exit code ${code}.`);
   }
 });
 
-const commandFiles = fs
-  .readdirSync("./commands")
-  .filter((file) => file.endsWith(".js") && file !== "index.js");
-
-for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
-  if (command?.data?.name) {
-    client.commands.set(command.data.name, command);
-  } else {
-    console.warn(`⚠️ Skipping invalid command: ${file} - Missing 'data.name'`);
+function loadCommands() {
+  if (!fs.existsSync("./commands.json")) {
+    console.error("❌ commands.json not found! Skipping command loading.");
+    return;
   }
+
+  const commands = JSON.parse(fs.readFileSync("./commands.json", "utf8"));
+  for (const cmd of commands) {
+    client.commands.set(cmd.name, cmd);
+  }
+
+  console.log(`📜 Loaded ${client.commands.size} commands.`);
 }
 
 const eventFiles = fs
@@ -178,18 +180,9 @@ async function monitorWalltakerChanges() {
 
   for (const { guild_id, feed_id } of settings) {
     try {
-      let imageData;
-      try {
-        imageData = await fetchWalltakerImage(feed_id);
-      } catch (error) {
-        console.error(
-          `❌ Error fetching Walltaker image for feed ${feed_id}:`,
-          error
-        );
-        continue;
-      }
-
+      const imageData = await fetchWalltakerImage(feed_id);
       if (!imageData) continue;
+
       const { imageUrl } = imageData;
 
       if (lastCheckImages[guild_id] !== imageUrl) {
@@ -207,7 +200,7 @@ async function monitorWalltakerChanges() {
 client.once("ready", async () => {
   console.log("✅ Bot is fully loaded and ready to go!");
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-  setInterval(monitorWalltakerChanges, 45 * 1000);
+  setInterval(monitorWalltakerChanges, 30 * 1000);
   setInterval(postWalltakerImages, 10 * 60 * 1000);
 });
 
