@@ -6,16 +6,14 @@ const clientId = process.env.CLIENT_ID;
 const token = process.env.TOKEN;
 
 if (!clientId || !token) {
-  console.error(
-    "❌ Missing CLIENT_ID or TOKEN in environment variables."
-  );
+  console.error("❌ Missing CLIENT_ID or TOKEN in environment variables.");
   process.exit(1);
 }
-
 
 const commandFiles = fs
   .readdirSync("./commands")
   .filter((file) => file.endsWith(".js"));
+
 const allCommands = [];
 
 for (const file of commandFiles) {
@@ -41,7 +39,7 @@ const rest = new REST({ version: "10" }).setToken(token);
     console.log("✅ Cleared old global commands!");
 
     if (allCommands.length === 0) {
-      console.warn("⚠️ No commands found to register. Skipping...");
+      console.warn("⚠️ No commands found to register. Skipping deployment...");
       return;
     }
 
