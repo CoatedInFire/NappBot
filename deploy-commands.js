@@ -1,5 +1,6 @@
 require("dotenv").config();
 const fs = require("fs");
+const path = require("path");
 const { REST, Routes } = require("discord.js");
 
 const clientId = process.env.CLIENT_ID;
@@ -13,7 +14,7 @@ if (!clientId || !token) {
 function getCommandFiles(dir) {
   let files = [];
   fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
-    const fullPath = `${dir}/${entry.name}`;
+    const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       files = files.concat(getCommandFiles(fullPath));
     } else if (entry.name.endsWith(".js")) {
@@ -23,16 +24,21 @@ function getCommandFiles(dir) {
   return files;
 }
 
-const commandFiles = getCommandFiles("./commands");
+const commandFiles = getCommandFiles(path.join(__dirname, "commands"));
 
 const allCommands = [];
 
 for (const file of commandFiles) {
-  const command = require(file);
-  if (command?.data?.toJSON) {
-    allCommands.push(command.data.toJSON());
-  } else {
-    console.warn(`⚠️ Skipping invalid command file: ${file}`);
+  try {
+    const command = require(file);
+    if (command?.data?.toJSON) {
+      allCommands.push(command.data.toJSON());
+      console.log(`✅ Loaded command: ${command.data.name}`);
+    } else {
+      console.warn(`⚠️ Skipping invalid command file: ${file}`);
+    }
+  } catch (error) {
+    console.error(`❌ Error loading command file: ${file}`, error);
   }
 }
 

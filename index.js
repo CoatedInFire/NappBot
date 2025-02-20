@@ -1,6 +1,8 @@
 require("dotenv").config();
 const { Client, Collection, GatewayIntentBits } = require("discord.js");
 const fs = require("fs");
+const path = require("path");
+const { exec } = require("child_process");
 const { database } = require("./utils/database");
 const { fetchWalltakerImage } = require("./utils/fetchWalltaker");
 const { getE621PostId } = require("./utils/e621API");
@@ -30,26 +32,44 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
 client.commands = new Collection();
 
-const commandFiles = fs
-  .readdirSync("./commands")
-  .filter((file) => file.endsWith(".js"));
+function getCommandFiles(dir) {
+  let files = [];
+  fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      files = files.concat(getCommandFiles(fullPath));
+    } else if (entry.name.endsWith(".js")) {
+      files.push(fullPath);
+    }
+  });
+  return files;
+}
+
+const commandFiles = getCommandFiles(path.join(__dirname, "commands"));
 
 for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
-  if (command.data && command.execute) {
-    client.commands.set(command.data.name, command);
-  } else {
-    console.warn(`⚠️ Skipping invalid command file: ${file}`);
+  try {
+    const command = require(file);
+    if (command?.data?.name && command?.execute) {
+      client.commands.set(command.data.name, command);
+      console.log(`✅ Loaded command: ${command.data.name}`);
+    } else {
+      console.warn(`⚠️ Skipping invalid command file: ${file}`);
+    }
+  } catch (error) {
+    console.error(`❌ Error loading command file: ${file}`, error);
   }
 }
 
 console.log(`📜 Loaded ${client.commands.size} commands.`);
 
+// ✅ Load event files
 const eventFiles = fs
   .readdirSync("./events")
   .filter((file) => file.endsWith(".js"));
@@ -63,6 +83,19 @@ for (const file of eventFiles) {
   }
 }
 
+// ✅ Automatically deploy commands on startup
+exec("node deploy-commands.js", (error, stdout, stderr) => {
+  if (error) {
+    console.error(`❌ Command Deployment Error: ${error.message}`);
+    return;
+  }
+  if (stderr) {
+    console.error(`⚠️ Command Deployment Warning: ${stderr}`);
+  }
+  console.log(stdout);
+});
+
+// ✅ Walltaker Integration
 let lastPostedImages = {};
 let lastCheckImages = {};
 
@@ -184,8 +217,8 @@ async function monitorWalltakerChanges() {
 client.once("ready", async () => {
   console.log("✅ Bot is fully loaded and ready to go!");
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-  setInterval(monitorWalltakerChanges, 30 * 1000);
-  setInterval(postWalltakerImages, 10 * 60 * 1000);
+  setInterval(monitorWalltakerChanges, 30 * 1000); //
+  setInterval(postWalltakerImages, 15 * 60 * 1000); //
 });
 
 client.login(TOKEN);
