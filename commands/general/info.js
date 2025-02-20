@@ -49,6 +49,11 @@ module.exports = {
           inline: true,
         },
         {
+          name: "\u200B",
+          value: "\u200B",
+          inline: true,
+        },
+        {
           name: "💻 System Metrics",
           value:
             `**System Uptime:** ${metrics.uptime}\n` +
@@ -59,15 +64,15 @@ module.exports = {
           inline: false,
         },
         {
-          name: "👤 Bot Owner",
-          value: "n4ppstar",
+          name: "📜 Special thanks to:",
+          value:
+            "<:Dusty:134226991835932680> Dusty\n<:James:134226946533255169> James\n<:Victor:134227032356247572> Victor\n<:Sabes:1342270316096786554> Sabes",
           inline: false,
         }
       )
       .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
       .setFooter({ text: "Made with 💚 by n4ppstar" });
 
-    // Buttons
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setLabel("GitHub Repository")
