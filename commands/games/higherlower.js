@@ -76,12 +76,11 @@ module.exports = {
         const choice = i.customId;
         let won = false;
 
-        // Adjust win odds dynamically based on streak
         let winChance = currentStreak >= 3 ? 40 : 42;
         let loseChance = currentStreak >= 3 ? 51 : 49;
         let tieChance = 100 - (winChance + loseChance);
 
-        if (bet >= 10000000) winChance = 39; // High bets reduce odds slightly
+        if (bet >= 10000000) winChance = 39;
 
         const randomOutcome = Math.random() * 100;
         if (randomOutcome < winChance) {
@@ -91,7 +90,7 @@ module.exports = {
         } else if (randomOutcome < winChance + loseChance) {
           won = false;
         } else {
-          secondNumber = firstNumber; // Tie case
+          secondNumber = firstNumber;
         }
 
         const winnings = won ? bet : -bet;
@@ -138,7 +137,6 @@ module.exports = {
             ],
           });
 
-        // Double or Nothing Option
         const doubleButton = new ButtonBuilder()
           .setCustomId("double")
           .setLabel("💰 Double or Nothing")
@@ -159,7 +157,6 @@ module.exports = {
           components: won ? [resultRow] : [],
         });
 
-        // Double or Nothing Handler
         if (won) {
           const doubleCollector =
             interaction.channel.createMessageComponentCollector({
