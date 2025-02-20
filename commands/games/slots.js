@@ -71,7 +71,7 @@ module.exports = {
 
     const row = new ActionRowBuilder().addComponents(playAgainButton);
 
-    const message = await interaction.reply({
+    await interaction.reply({
       embeds: [embed],
       components: [row],
       ephemeral: false,
@@ -85,9 +85,9 @@ module.exports = {
 
     collector.on("collect", async (i) => {
       if (i.customId === "play_again") {
+        await i.deferUpdate(); // Acknowledge button press
         collector.stop();
-        await i.update({ content: "🔄 Restarting game...", components: [] });
-        module.exports.execute(interaction);
+        await module.exports.execute(i); // Restart game with a fresh interaction
       }
     });
 

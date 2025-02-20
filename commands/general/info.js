@@ -5,43 +5,69 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
-const os = require("os");
+const { getSystemMetrics } = require("../../utils/metrics");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("botinfo")
-    .setDescription("ℹ️ Get information about NappBot."),
+    .setName("info")
+    .setDescription("📊 Get detailed statistics about NappBot."),
+
   async execute(interaction) {
     const client = interaction.client;
+    const metrics = getSystemMetrics();
 
-    const totalSeconds = Math.floor(client.uptime / 1000);
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    const uptime = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    const botUptime = client.uptime / 1000;
+    const botUptimeFormatted = formatUptime(botUptime);
 
     const embed = new EmbedBuilder()
       .setColor("#5865F2")
-      .setTitle("ℹ️ NappBot Information")
-      .setDescription(
-        "NappBot is a multipurpose bot for various utilities and fun commands."
-      )
+      .setTitle("📊 NappBot Statistics")
+      .setDescription("ℹ️ Detailed bot information and system metrics.")
       .addFields(
-        { name: "📌 Bot Name", value: client.user.username, inline: true },
-        { name: "🆔 Bot ID", value: client.user.id, inline: true },
         {
-          name: "🖥️ Servers",
-          value: `${client.guilds.cache.size}`,
+          name: "📦 Package Info",
+          value:
+            "```yaml\n" +
+            `OS: ${require("os").type()}\n` +
+            `Node.js: ${process.version}\n` +
+            `Discord.js: v${require("discord.js").version}\n` +
+            "```",
+        },
+        {
+          name: "📊 Bot Metadata",
+          value:
+            `**Uptime:** ${botUptimeFormatted}\n` +
+            `**Servers:** ${client.guilds.cache.size}\n` +
+            `**API/Bot Latency:** ${client.ws.ping}ms`,
           inline: true,
         },
-        { name: "⏳ Uptime", value: uptime, inline: true },
-        { name: "⚙️ Node.js Version", value: process.version, inline: true },
-        { name: "🖥️ OS", value: `${os.type()} ${os.arch()}`, inline: true }
+        {
+          name: "🛠️ Shard Info",
+          value:
+            `**Total Shards:** ${client.shard?.count || 1}\n` +
+            `**Current Shard:** ${client.shard?.ids[0] || 0}\n`,
+          inline: true,
+        },
+        {
+          name: "💻 System Metrics",
+          value:
+            `**System Uptime:** ${metrics.uptime}\n` +
+            `**RAM Usage:** ${metrics.usedRam} GB / ${metrics.totalRam} GB\n` +
+            `**Free RAM:** ${metrics.freeRam} GB\n` +
+            `**CPU Load (1m avg):** ${metrics.cpuLoad}%\n` +
+            `**Bot Process RAM:** ${metrics.processMemory} MB`,
+          inline: false,
+        },
+        {
+          name: "👤 Bot Owner",
+          value: "n4ppstar",
+          inline: false,
+        }
       )
-      .setThumbnail(client.user.displayAvatarURL())
-      .setFooter({ text: "NappBot • Made with ❤️ by n4ppstar" });
+      .setThumbnail(client.user.displayAvatarURL({ dynamic: true }))
+      .setFooter({ text: "Made with 💚 by n4ppstar" });
 
+    // Buttons
     const buttons = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setLabel("GitHub Repository")
@@ -56,9 +82,15 @@ module.exports = {
     await interaction.reply({
       embeds: [embed],
       components: [buttons],
-      ephemeral: true,
+      ephemeral: false,
     });
   },
-  modulePath: __filename,
 };
 
+function formatUptime(seconds) {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${days}d ${hours}h ${minutes}m ${secs}s`;
+}

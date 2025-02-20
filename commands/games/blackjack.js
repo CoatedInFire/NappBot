@@ -40,16 +40,6 @@ module.exports = {
     let playerHand = [drawCard(deck), drawCard(deck)];
     let dealerHand = [drawCard(deck), drawCard(deck)];
 
-    function calculateHandValue(hand) {
-      let value = hand.reduce((sum, card) => sum + card.value, 0);
-      let aces = hand.filter((card) => card.rank === "A").length;
-      while (value > 21 && aces > 0) {
-        value -= 10;
-        aces--;
-      }
-      return value;
-    }
-
     function generateDeck() {
       const suits = ["♠", "♥", "♦", "♣"];
       const ranks = [
@@ -80,6 +70,16 @@ module.exports = {
       return deck.splice(Math.floor(Math.random() * deck.length), 1)[0];
     }
 
+    function calculateHandValue(hand) {
+      let value = hand.reduce((sum, card) => sum + card.value, 0);
+      let aces = hand.filter((card) => card.rank === "A").length;
+      while (value > 21 && aces > 0) {
+        value -= 10;
+        aces--;
+      }
+      return value;
+    }
+
     function formatHand(hand) {
       return hand.map((card) => `${card.rank}${card.suit}`).join(" ");
     }
@@ -90,9 +90,10 @@ module.exports = {
         .setDescription(
           `**Your Hand:** ${formatHand(playerHand)} (${calculateHandValue(
             playerHand
-          )})\n**Dealer's Hand:** ${formatHand(
-            dealerHand
-          )} (${calculateHandValue(dealerHand)})`
+          )})\n` +
+            `**Dealer's Hand:** ${formatHand(dealerHand)} (${calculateHandValue(
+              dealerHand
+            )})`
         )
         .setColor(result.color)
         .setFooter({ text: `You ${result.text}! ${result.earnings} coins` });
@@ -115,9 +116,9 @@ module.exports = {
 
       collector.on("collect", async (i) => {
         if (i.customId === "play_again") {
+          await i.deferUpdate();
           collector.stop();
-          await i.update({ content: "🔄 Restarting game...", components: [] });
-          module.exports.execute(interaction);
+          await module.exports.execute(i);
         }
       });
 
@@ -143,7 +144,7 @@ module.exports = {
       }
     }
 
-    async function updateGame(interaction) {
+    async function updateGame(i) {
       let playerTotal = calculateHandValue(playerHand);
       if (playerTotal > 21) {
         return endGame({ text: "busted", color: "Red", earnings: -bet });
@@ -152,11 +153,8 @@ module.exports = {
       let embed = new EmbedBuilder()
         .setTitle("🃏 Blackjack")
         .setDescription(
-          `**Your Hand:** ${formatHand(
-            playerHand
-          )} (${playerTotal})\n**Dealer's Hand:** ${dealerHand[0].rank}${
-            dealerHand[0].suit
-          } ?`
+          `**Your Hand:** ${formatHand(playerHand)} (${playerTotal})\n` +
+            `**Dealer's Hand:** ${dealerHand[0].rank}${dealerHand[0].suit} ?`
         )
         .setColor("Blue");
 
@@ -176,7 +174,7 @@ module.exports = {
           .setDisabled(bet > balance)
       );
 
-      await interaction.editReply({ embeds: [embed], components: [row] });
+      await i.editReply({ embeds: [embed], components: [row] });
     }
 
     const message = await interaction.reply({
@@ -184,7 +182,8 @@ module.exports = {
       ephemeral: false,
       fetchReply: true,
     });
-    updateGame(interaction);
+
+    await updateGame(interaction);
 
     const filter = (i) => i.user.id === userId;
     const collector = message.createMessageComponentCollector({

@@ -57,6 +57,7 @@ for (const file of commandFiles) {
   try {
     const command = require(file);
     if (command?.data?.name && command?.execute) {
+      command.filePath = file;
       client.commands.set(command.data.name, command);
       console.log(`✅ Loaded command: ${command.data.name}`);
     } else {

@@ -134,7 +134,7 @@ module.exports = {
       }
 
       collector.stop();
-      await playRoulette(interaction, userId, betAmount, betType, betValue);
+      await playRoulette(i, userId, betAmount, betType, betValue);
     });
 
     collector.on("end", async () => {
@@ -188,51 +188,45 @@ async function playRoulette(interaction, userId, betAmount, betType, betValue) {
       break;
   }
 
-  const playAgainButton = new ButtonBuilder()
-    .setCustomId("play_again")
-    .setLabel("🔄 Play Again")
-    .setStyle(ButtonStyle.Success);
-
-  const resultEmbed = new EmbedBuilder()
-    .setTitle("🎰 Roulette Results")
-    .setDescription(
-      `The wheel spun and landed on **${number} (${color.toUpperCase()})**!\n\n`
-    )
-    .addFields(
-      { name: "Your Bet", value: `${betType} → **${betValue}**`, inline: true },
-      {
-        name: "Result",
-        value: won ? "✅ You won!" : "❌ You lost!",
-        inline: true,
-      },
-      {
-        name: "Payout",
-        value: won ? `+${winnings} coins` : `-${betAmount} coins`,
-        inline: true,
-      }
-    )
-    .setColor(won ? "Green" : "Red");
-
   await updateUserBalance(userId, won ? winnings : -betAmount);
 
-  const row = new ActionRowBuilder().addComponents(playAgainButton);
-  await interaction.editReply({ embeds: [resultEmbed], components: [row] });
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("play_again")
+      .setLabel("🔄 Play Again")
+      .setStyle(ButtonStyle.Success)
+  );
 
-  const filter = (i) => i.user.id === userId;
-  const collector = interaction.channel.createMessageComponentCollector({
-    filter,
-    time: 30000,
+  const message = await interaction.update({
+    embeds: [
+      new EmbedBuilder()
+        .setTitle("🎰 Roulette Results")
+        .setDescription(
+          `The wheel landed on **${number} (${color.toUpperCase()})**!`
+        )
+        .addFields(
+          {
+            name: "Your Bet",
+            value: `${betType} → **${betValue}**`,
+            inline: true,
+          },
+          {
+            name: "Result",
+            value: won ? "✅ You won!" : "❌ You lost!",
+            inline: true,
+          },
+          {
+            name: "Payout",
+            value: won ? `+${winnings} coins` : `-${betAmount} coins`,
+            inline: true,
+          }
+        )
+        .setColor(won ? "Green" : "Red"),
+    ],
+    components: [row],
   });
 
-  collector.on("collect", async (i) => {
-    if (i.customId === "play_again") {
-      collector.stop();
-      await i.update({ content: "🔄 Restarting game...", components: [] });
-      module.exports.execute(interaction);
-    }
-  });
-
-  collector.on("end", async () => {
-    await interaction.editReply({ components: [] });
-  });
+  message
+    .awaitMessageComponent({ time: 30000 })
+    .then(() => module.exports.execute(interaction));
 }
