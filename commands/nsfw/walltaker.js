@@ -5,9 +5,9 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
-const { fetchWalltakerImage } = require("../utils/fetchWalltaker");
-const { getE621PostId } = require("../utils/e621API");
-const { database } = require("../utils/database");
+const { fetchWalltakerImage } = require("../../utils/fetchWalltaker");
+const { getE621PostId } = require("../../utils/e621API");
+const { database } = require("../../utils/database");
 
 module.exports = {
   data: new SlashCommandBuilder()

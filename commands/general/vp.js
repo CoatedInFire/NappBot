@@ -5,7 +5,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
-const { fetchVPThreads } = require("../utils/fetchVPThreads");
+const { fetchVPThreads } = require("../../utils/fetchVPThreads");
 const { decode } = require("html-entities");
 
 module.exports = {

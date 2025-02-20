@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
-const { database } = require("../utils/database");
+const { database } = require("../../utils/database");
 
 async function ensureTablesExist() {
   try {

@@ -5,7 +5,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
-const { fetchE621Images } = require("../utils/e621API");
+const { fetchE621Images } = require("../../utils/e621API");
 
 module.exports = {
   data: new SlashCommandBuilder()
