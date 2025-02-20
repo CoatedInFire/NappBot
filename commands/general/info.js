@@ -5,7 +5,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
-const { getSystemMetrics } = require("../../utils/metrics");
+const { getSystemMetrics } = require("../../utils/metrics.js");
 
 module.exports = {
   data: new SlashCommandBuilder()
