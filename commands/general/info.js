@@ -22,7 +22,7 @@ module.exports = {
     const uptime = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
     const embed = new EmbedBuilder()
-      .setColor("#531E88")
+      .setColor("#5865F2")
       .setTitle("ℹ️ NappBot Information")
       .setDescription(
         "NappBot is a multipurpose bot for various utilities and fun commands."
