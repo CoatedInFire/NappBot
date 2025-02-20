@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const path = require("path");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -21,16 +22,37 @@ module.exports = {
         return interaction.editReply("⚠️ No commands available.");
       }
 
-      const commandDescriptions = commandList
-        .map((cmd) => `\`/${cmd.data.name}\` - ${cmd.data.description}`)
-        .join("\n");
+      const categories = {};
 
-      console.log("✅ [DEBUG] Successfully generated command list");
+      commandList.forEach((cmd, cmdName) => {
+        const category = path
+          .dirname(cmd.filePath)
+          .split(path.sep)
+          .pop();
+
+        const capitalizedCategory =
+          category.charAt(0).toUpperCase() + category.slice(1);
+
+        if (!categories[capitalizedCategory]) {
+          categories[capitalizedCategory] = [];
+        }
+
+        categories[capitalizedCategory].push(
+          `\`/${cmd.data.name}\` - ${cmd.data.description}`
+        );
+      });
+
+      const embedFields = Object.keys(categories).map((category) => ({
+        name: `📂 ${category}`,
+        value: categories[category].join("\n"),
+      }));
+
+      console.log("✅ [DEBUG] Successfully grouped commands by category");
 
       const embed = new EmbedBuilder()
         .setTitle("📜 Available Commands")
         .setColor("#F1C40F")
-        .setDescription(commandDescriptions)
+        .addFields(embedFields)
         .setFooter({
           text: `Total Commands: ${commandList.size}`,
           iconURL: interaction.client.user.displayAvatarURL(),
