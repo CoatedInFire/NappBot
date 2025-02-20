@@ -37,4 +37,5 @@ module.exports = {
       `You chose **${userChoice}**, I chose **${botChoice}**. ${result}`
     );
   },
+  modulePath: __filename,
 };

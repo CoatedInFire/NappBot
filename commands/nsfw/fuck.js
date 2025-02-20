@@ -203,4 +203,6 @@ module.exports = {
       }
     }
   },
+  modulePath: __filename,
 };
+

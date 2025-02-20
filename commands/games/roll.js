@@ -26,4 +26,6 @@ module.exports = {
       `🎲 You rolled a **${roll}** (Range: ${min}-${max})`
     );
   },
+  modulePath: __filename,
 };
+

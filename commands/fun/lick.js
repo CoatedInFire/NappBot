@@ -71,4 +71,5 @@ module.exports = {
       .setTimestamp();
     await interaction.reply({ embeds: [embed] });
   },
+  modulePath: __filename,
 };

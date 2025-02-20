@@ -59,4 +59,6 @@ module.exports = {
       ephemeral: true,
     });
   },
+  modulePath: __filename,
 };
+

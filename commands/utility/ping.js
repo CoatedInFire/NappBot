@@ -3,8 +3,7 @@ const { SlashCommandBuilder } = require("discord.js");
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("ping")
-    .setDescription("🏓 Pings the bot and shows the latency.")
-    .setDMPermission(true),
+    .setDescription("🏓 Pings the bot and shows the latency."),
   async execute(interaction) {
     await interaction.reply({
       content: `🏓 Pong! Latency: ${
@@ -13,4 +12,5 @@ module.exports = {
       ephemeral: true,
     });
   },
+  modulePath: __filename,
 };

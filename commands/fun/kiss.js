@@ -75,4 +75,5 @@ module.exports = {
     await interaction.reply({ embeds: [embed] });
 
   },
+  modulePath: __filename,
 };

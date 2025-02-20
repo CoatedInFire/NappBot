@@ -1,3 +1,4 @@
+const path = require("path");
 const {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -19,7 +20,11 @@ module.exports = {
         .setMinValue(10)
     ),
 
+  modulePath: path.resolve(__filename),
+
   async execute(interaction) {
+    console.log(`⚡ Executing /blackjack from: ${module.exports.modulePath}`);
+
     const userId = interaction.user.id;
     let bet = interaction.options.getInteger("bet");
     let balance = await getUserBalance(userId);
@@ -92,8 +97,33 @@ module.exports = {
         .setColor(result.color)
         .setFooter({ text: `You ${result.text}! ${result.earnings} coins` });
 
-      await interaction.editReply({ embeds: [embed], components: [] });
+      const playAgainButton = new ButtonBuilder()
+        .setCustomId("play_again")
+        .setLabel("🔄 Play Again")
+        .setStyle(ButtonStyle.Success);
+
+      const row = new ActionRowBuilder().addComponents(playAgainButton);
+
+      await interaction.editReply({ embeds: [embed], components: [row] });
       await updateUserBalance(userId, result.earnings);
+
+      const filter = (i) => i.user.id === userId;
+      const collector = interaction.channel.createMessageComponentCollector({
+        filter,
+        time: 30000,
+      });
+
+      collector.on("collect", async (i) => {
+        if (i.customId === "play_again") {
+          collector.stop();
+          await i.update({ content: "🔄 Restarting game...", components: [] });
+          module.exports.execute(interaction);
+        }
+      });
+
+      collector.on("end", async () => {
+        await interaction.editReply({ components: [] });
+      });
     }
 
     async function dealerTurn() {

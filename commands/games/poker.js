@@ -1,3 +1,4 @@
+const path = require("path");
 const {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -46,7 +47,11 @@ module.exports = {
         .setRequired(false)
     ),
 
+  modulePath: path.resolve(__filename),
+
   async execute(interaction) {
+    console.log(`⚡ Executing /poker from: ${module.exports.modulePath}`);
+
     await interaction.deferReply();
 
     const userId = interaction.user.id;
@@ -227,7 +232,32 @@ module.exports = {
         )
         .setColor("Gold");
 
-      await interaction.editReply({ embeds: [embed], components: [] });
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("play_again")
+          .setLabel("🔄 Play Again")
+          .setStyle(ButtonStyle.Success)
+      );
+
+      const message = await interaction.editReply({
+        embeds: [embed],
+        components: [row],
+      });
+
+      const collector = message.createMessageComponentCollector({
+        time: 30000,
+      });
+
+      collector.on("collect", async (i) => {
+        if (i.customId === "play_again" && i.user.id === userId) {
+          await i.update({ content: "🔄 Restarting game...", components: [] });
+          await module.exports.execute(interaction);
+        }
+      });
+
+      collector.on("end", async () => {
+        await message.edit({ components: [] });
+      });
     }
 
     dealCards();

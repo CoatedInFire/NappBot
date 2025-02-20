@@ -1,3 +1,4 @@
+const path = require("path");
 const {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -18,7 +19,11 @@ module.exports = {
         .setRequired(true)
     ),
 
+  modulePath: path.resolve(__filename),
+
   async execute(interaction) {
+    console.log(`⚡ Executing /higherlower from: ${module.exports.modulePath}`);
+
     const userId = interaction.user.id;
     const bet = interaction.options.getInteger("bet");
     let balance = await getUserBalance(userId);
@@ -72,7 +77,7 @@ module.exports = {
       collector.on("collect", async (i) => {
         collector.stop();
 
-        const secondNumber = Math.floor(Math.random() * 100) + 1;
+        let secondNumber = Math.floor(Math.random() * 100) + 1;
         const choice = i.customId;
         let won = false;
 
@@ -137,6 +142,11 @@ module.exports = {
             ],
           });
 
+        const playAgainButton = new ButtonBuilder()
+          .setCustomId("play_again")
+          .setLabel("🔄 Play Again")
+          .setStyle(ButtonStyle.Success);
+
         const doubleButton = new ButtonBuilder()
           .setCustomId("double")
           .setLabel("💰 Double or Nothing")
@@ -145,9 +155,10 @@ module.exports = {
         const cashOutButton = new ButtonBuilder()
           .setCustomId("cashout")
           .setLabel("💵 Cash Out")
-          .setStyle(ButtonStyle.Success);
+          .setStyle(ButtonStyle.Secondary);
 
         const resultRow = new ActionRowBuilder().addComponents(
+          playAgainButton,
           doubleButton,
           cashOutButton
         );
@@ -157,25 +168,33 @@ module.exports = {
           components: won ? [resultRow] : [],
         });
 
-        if (won) {
-          const doubleCollector =
-            interaction.channel.createMessageComponentCollector({
-              filter,
-              time: 30000,
-            });
-
-          doubleCollector.on("collect", async (btnInteraction) => {
-            doubleCollector.stop();
-            if (btnInteraction.customId === "double") {
-              playGame(btnInteraction, secondNumber, bet * 2, currentStreak);
-            } else {
-              await btnInteraction.update({
-                content: "💵 You cashed out your winnings!",
-                components: [],
-              });
-            }
+        const newCollector =
+          interaction.channel.createMessageComponentCollector({
+            filter,
+            time: 30000,
           });
-        }
+
+        newCollector.on("collect", async (btnInteraction) => {
+          newCollector.stop();
+          if (btnInteraction.customId === "play_again") {
+            await btnInteraction.update({
+              content: "🔄 Restarting game...",
+              components: [],
+            });
+            playGame(interaction, Math.floor(Math.random() * 100) + 1, bet, 0);
+          } else if (btnInteraction.customId === "double") {
+            playGame(btnInteraction, secondNumber, bet * 2, currentStreak);
+          } else {
+            await btnInteraction.update({
+              content: "💵 You cashed out your winnings!",
+              components: [],
+            });
+          }
+        });
+
+        newCollector.on("end", async () => {
+          await interaction.editReply({ components: [] });
+        });
       });
     }
 

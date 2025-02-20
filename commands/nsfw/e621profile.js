@@ -137,4 +137,6 @@ module.exports = {
       await interaction.editReply({ components: [] });
     });
   },
+  modulePath: __filename,
 };
+

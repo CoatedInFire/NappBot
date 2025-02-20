@@ -140,4 +140,6 @@ module.exports = {
 
   getLastPostedImage,
   saveLastPostedImage,
+  modulePath: __filename,
 };
+

@@ -1,3 +1,4 @@
+const path = require("path");
 const {
   SlashCommandBuilder,
   EmbedBuilder,
@@ -55,7 +56,11 @@ module.exports = {
       option.setName("bet").setDescription("Amount to bet").setRequired(true)
     ),
 
+  modulePath: path.resolve(__filename),
+
   async execute(interaction) {
+    console.log(`⚡ Executing /roulette from: ${module.exports.modulePath}`);
+
     const userId = interaction.user.id;
     const betAmount = interaction.options.getInteger("bet");
 
@@ -160,24 +165,33 @@ async function playRoulette(interaction, userId, betAmount, betType, betValue) {
       }
       break;
     case "even_odd":
-      if (
-        (betValue === "even" && number !== 0 && number % 2 === 0) ||
-        (betValue === "odd" && number % 2 !== 0)
-      ) {
-        won = true;
-        winnings = betAmount * 2;
+      if (number !== 0) {
+        if (
+          (betValue === "even" && number % 2 === 0) ||
+          (betValue === "odd" && number % 2 !== 0)
+        ) {
+          won = true;
+          winnings = betAmount * 2;
+        }
       }
       break;
     case "high_low":
-      if (
-        (betValue === "high" && number >= 19) ||
-        (betValue === "low" && number >= 1 && number <= 18)
-      ) {
-        won = true;
-        winnings = betAmount * 2;
+      if (number !== 0) {
+        if (
+          (betValue === "high" && number >= 19 && number <= 36) ||
+          (betValue === "low" && number >= 1 && number <= 18)
+        ) {
+          won = true;
+          winnings = betAmount * 2;
+        }
       }
       break;
   }
+
+  const playAgainButton = new ButtonBuilder()
+    .setCustomId("play_again")
+    .setLabel("🔄 Play Again")
+    .setStyle(ButtonStyle.Success);
 
   const resultEmbed = new EmbedBuilder()
     .setTitle("🎰 Roulette Results")
@@ -201,5 +215,24 @@ async function playRoulette(interaction, userId, betAmount, betType, betValue) {
 
   await updateUserBalance(userId, won ? winnings : -betAmount);
 
-  await interaction.editReply({ embeds: [resultEmbed] });
+  const row = new ActionRowBuilder().addComponents(playAgainButton);
+  await interaction.editReply({ embeds: [resultEmbed], components: [row] });
+
+  const filter = (i) => i.user.id === userId;
+  const collector = interaction.channel.createMessageComponentCollector({
+    filter,
+    time: 30000,
+  });
+
+  collector.on("collect", async (i) => {
+    if (i.customId === "play_again") {
+      collector.stop();
+      await i.update({ content: "🔄 Restarting game...", components: [] });
+      module.exports.execute(interaction);
+    }
+  });
+
+  collector.on("end", async () => {
+    await interaction.editReply({ components: [] });
+  });
 }

@@ -10,4 +10,5 @@ module.exports = {
 
     await interaction.reply(`The coin landed on **${result}**!`);
   },
+  modulePath: __filename,
 };

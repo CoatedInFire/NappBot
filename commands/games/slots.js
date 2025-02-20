@@ -1,4 +1,11 @@
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const path = require("path");
+const {
+  SlashCommandBuilder,
+  EmbedBuilder,
+  ButtonBuilder,
+  ActionRowBuilder,
+  ButtonStyle,
+} = require("discord.js");
 const { getUserBalance, updateUserBalance } = require("../../utils/database");
 
 module.exports = {
@@ -13,7 +20,11 @@ module.exports = {
         .setMinValue(10)
     ),
 
+  modulePath: path.resolve(__filename),
+
   async execute(interaction) {
+    console.log(`⚡ Executing /slots from: ${module.exports.modulePath}`);
+
     const userId = interaction.user.id;
     let bet = interaction.options.getInteger("bet");
     let balance = await getUserBalance(userId);
@@ -53,6 +64,35 @@ module.exports = {
         text: win ? `You won ${winnings} coins!` : "Better luck next time!",
       });
 
-    return interaction.reply({ embeds: [embed] });
+    const playAgainButton = new ButtonBuilder()
+      .setCustomId("play_again")
+      .setLabel("🔄 Play Again")
+      .setStyle(ButtonStyle.Success);
+
+    const row = new ActionRowBuilder().addComponents(playAgainButton);
+
+    const message = await interaction.reply({
+      embeds: [embed],
+      components: [row],
+      ephemeral: false,
+    });
+
+    const filter = (i) => i.user.id === userId;
+    const collector = interaction.channel.createMessageComponentCollector({
+      filter,
+      time: 30000,
+    });
+
+    collector.on("collect", async (i) => {
+      if (i.customId === "play_again") {
+        collector.stop();
+        await i.update({ content: "🔄 Restarting game...", components: [] });
+        module.exports.execute(interaction);
+      }
+    });
+
+    collector.on("end", async () => {
+      await interaction.editReply({ components: [] });
+    });
   },
 };
