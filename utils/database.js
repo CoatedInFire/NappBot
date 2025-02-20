@@ -82,8 +82,50 @@ async function setUserPreference(userId, preference) {
   }
 }
 
+async function getUserBalance(userId) {
+  try {
+    const [rows] = await databasePool.execute(
+      "SELECT balance FROM users WHERE user_id = ?",
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      await databasePool.execute(
+        "INSERT INTO users (user_id, balance) VALUES (?, ?)",
+        [userId, 5000]
+      );
+      return 5000;
+    }
+
+    return rows[0].balance;
+  } catch (error) {
+    console.error(
+      `❌ MySQL Error (getUserBalance): ${error.code} - ${error.sqlMessage}`
+    );
+    return null;
+  }
+}
+
+async function updateUserBalance(userId, amount) {
+  try {
+    await databasePool.execute(
+      `INSERT INTO users (user_id, balance) VALUES (?, ?) 
+       ON DUPLICATE KEY UPDATE balance = balance + ?;`,
+      [userId, 5000, amount]
+    );
+    return true;
+  } catch (error) {
+    console.error(
+      `❌ MySQL Error (updateUserBalance): ${error.code} - ${error.sqlMessage}`
+    );
+    return false;
+  }
+}
+
 module.exports = {
   database: databasePool,
   getUserPreference,
   setUserPreference,
+  getUserBalance,
+  updateUserBalance,
 };
