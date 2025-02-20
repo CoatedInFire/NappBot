@@ -50,95 +50,17 @@ try {
   process.exit(1);
 }
 
-async function ensureTablesExist() {
-  try {
-    await databasePool.execute(`
-      CREATE TABLE IF NOT EXISTS user_preferences (
-        user_id VARCHAR(50) PRIMARY KEY,
-        preference ENUM('male', 'female', 'random') NOT NULL DEFAULT 'random'
-      );
-    `);
-
-    await databasePool.execute(`
-      CREATE TABLE IF NOT EXISTS user_installations (
-        user_id VARCHAR(50) PRIMARY KEY,
-        access_token TEXT NOT NULL,
-        refresh_token TEXT NOT NULL,
-        installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    console.log("✅ Ensured necessary tables exist!");
-  } catch (error) {
-    console.error(
-      "❌ Error ensuring tables exist:",
-      error.code,
-      "-",
-      error.sqlMessage
-    );
-  }
-}
-ensureTablesExist();
-
-async function storeUserInstallation(userId, accessToken, refreshToken) {
-  console.log("storeUserInstallation called with userId:", userId);
-  console.log("Type of userId:", typeof userId);
-
-  try {
-    await databasePool.execute(
-      "INSERT INTO user_installations (user_id, access_token, refresh_token) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE access_token = ?, refresh_token = ?;",
-      [userId, accessToken, refreshToken, accessToken, refreshToken]
-    );
-    console.log(`✅ Stored installation for user ${userId}`);
-    return true;
-  } catch (error) {
-    console.error(
-      `❌ MySQL Error (storeUserInstallation): ${error.code} - ${error.sqlMessage}`
-    );
-    return false;
-  }
-}
-
-async function getUserInstallation(userId) {
+async function getUserPreference(userId) {
   try {
     const [rows] = await databasePool.execute(
-      "SELECT access_token, refresh_token FROM user_installations WHERE user_id = ?",
-      [userId]
+      "SELECT preference FROM user_preferences WHERE user_id = ?",
+      [userId.trim()]
     );
-    return rows.length > 0 ? rows[0] : null;
+
+    return rows.length > 0 ? rows[0].preference : "random";
   } catch (error) {
     console.error(
-      `❌ MySQL Error (getUserInstallation): ${error.code} - ${error.sqlMessage}`
-    );
-    return null;
-  }
-}
-
-async function getUserPreference(userId) {
-  const trimmedUserId = userId.trim();
-  const stringUserId = String(trimmedUserId);
-
-  try {
-    const query = "SELECT preference FROM user_preferences WHERE user_id = ?";
-    console.log("Executing query:", query, [stringUserId]);
-
-    const [rows] = await databasePool.execute(query, [stringUserId]);
-
-    console.log("Database query result (rows):", rows);
-
-    if (rows.length === 0) {
-      console.log(`No preference found for user ${stringUserId}`);
-      return null;
-    }
-
-    const preference = rows[0].preference;
-    console.log(
-      `Retrieved preference '${preference}' for user ${stringUserId}`
-    );
-    return preference;
-  } catch (error) {
-    console.error(
-      `MySQL Error (getUserPreference): ${error.code} - ${error.sqlMessage}`
+      `❌ MySQL Error (getUserPreference): ${error.code} - ${error.sqlMessage}`
     );
     return "random";
   }
@@ -164,6 +86,4 @@ module.exports = {
   database: databasePool,
   getUserPreference,
   setUserPreference,
-  storeUserInstallation,
-  getUserInstallation,
 };

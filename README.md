@@ -39,7 +39,7 @@
 
 ✅ **Slash Commands** – No outdated prefixes, just `/commands`  
 🎭 **Customization** – Configure bot settings per server  
-📜 **Utility** – Utility features, like WT Autoposting  
+📜 **Utility** – Utility features, like e621 search, Walltaker autoposting.  
 🔞 **NSFW Features** – Optional for servers that allow it  
 
 ---
