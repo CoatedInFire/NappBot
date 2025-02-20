@@ -1,3 +1,5 @@
+const { REST, Routes } = require("discord.js");
+
 module.exports = {
   name: "ready",
   once: true,
@@ -14,6 +16,23 @@ module.exports = {
         "⏭️ Skipping command registration (DISABLE_READY_COMMANDS is enabled)."
       );
       return;
+    }
+
+    try {
+      console.log(`📜 Registering ${client.commands.size} commands...`);
+      const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+      const commands = client.commands.map((cmd) => cmd.data.toJSON());
+
+      await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), {
+        body: commands,
+      });
+
+      console.log(
+        `✅ Successfully registered ${client.commands.size} global commands.`
+      );
+    } catch (error) {
+      console.error("❌ Error registering commands:", error);
     }
   },
 };
