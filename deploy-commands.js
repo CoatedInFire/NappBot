@@ -10,23 +10,31 @@ if (!clientId || !token) {
   process.exit(1);
 }
 
-const commandFiles = fs
-  .readdirSync("./commands")
-  .filter((file) => file.endsWith(".js"));
+function getCommandFiles(dir) {
+  let files = [];
+  fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+    const fullPath = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      files = files.concat(getCommandFiles(fullPath));
+    } else if (entry.name.endsWith(".js")) {
+      files.push(fullPath);
+    }
+  });
+  return files;
+}
+
+const commandFiles = getCommandFiles("./commands");
 
 const allCommands = [];
 
 for (const file of commandFiles) {
-  const command = require(`./commands/${file}`);
+  const command = require(file);
   if (command?.data?.toJSON) {
     allCommands.push(command.data.toJSON());
   } else {
     console.warn(`⚠️ Skipping invalid command file: ${file}`);
   }
 }
-
-fs.writeFileSync("commands.json", JSON.stringify(allCommands, null, 2));
-console.log("📄 Saved commands to commands.json");
 
 const rest = new REST({ version: "10" }).setToken(token);
 

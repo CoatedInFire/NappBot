@@ -13,7 +13,7 @@ const {
 const {
   getLastPostedImage,
   saveLastPostedImage,
-} = require("./commands/setwalltaker.js");
+} = require("./commands/utility/setwalltaker.js");
 
 require("./server");
 
