@@ -67,9 +67,12 @@ module.exports = {
         .setRequired(true)
         .addChoices(
           { name: "🎯 Number", value: "number" },
-          { name: "🔴⚫ Color", value: "color" },
-          { name: "🔢 Even/Odd", value: "even_odd" },
-          { name: "⬆️⬇️ High/Low", value: "high_low" }
+          { name: "🔴 Red", value: "red" },
+          { name: "⚫ Black", value: "black" },
+          { name: "🔢 Even", value: "even" },
+          { name: "🔢 Odd", value: "odd" },
+          { name: "⬆️ High (19-36)", value: "high" },
+          { name: "⬇️ Low (1-18)", value: "low" }
         )
     )
     .addIntegerOption((option) =>
@@ -98,10 +101,7 @@ module.exports = {
       });
     }
 
-    if (
-      betType === "number" &&
-      (chosenNumber === null || chosenNumber < 0 || chosenNumber > 36)
-    ) {
+    if (betType === "number" && chosenNumber === null) {
       return interaction.reply({
         content: "❌ You must pick a valid number between 0 and 36!",
         ephemeral: true,
@@ -122,38 +122,39 @@ module.exports = {
           winnings = betAmount * 35;
         }
         break;
-      case "color":
-        if (
-          chosenNumber === null &&
-          color === (Math.random() < 0.5 ? "red" : "black")
-        ) {
+      case "red":
+      case "black":
+        if (color === betType) {
           won = true;
           winnings = betAmount * 2;
         }
         break;
-      case "even_odd":
-        if (
-          number !== 0 &&
-          ((chosenNumber === null && number % 2 === 0) ||
-            (chosenNumber !== null && number % 2 !== 0))
-        ) {
+      case "even":
+        if (number !== 0 && number % 2 === 0) {
           won = true;
           winnings = betAmount * 2;
         }
         break;
-      case "high_low":
-        if (
-          number !== 0 &&
-          ((chosenNumber === null && number >= 19 && number <= 36) ||
-            (chosenNumber !== null && number >= 1 && number <= 18))
-        ) {
+      case "odd":
+        if (number % 2 !== 0) {
+          won = true;
+          winnings = betAmount * 2;
+        }
+        break;
+      case "high":
+        if (number >= 19 && number <= 36) {
+          won = true;
+          winnings = betAmount * 2;
+        }
+        break;
+      case "low":
+        if (number >= 1 && number <= 18) {
           won = true;
           winnings = betAmount * 2;
         }
         break;
     }
 
-    // Update balance and active streak
     await updateUserBalance(userId, won ? winnings : -betAmount);
 
     const streak = await getUserStreak(userId);
@@ -210,19 +211,16 @@ module.exports = {
     const message = await interaction.reply({
       embeds: [embed],
       components: [row],
-      ephemeral: false,
     });
 
-    const filter = (i) =>
-      i.user.id === interaction.user.id && i.customId === "play_again";
     const collector = message.createMessageComponentCollector({
-      filter,
+      filter: (i) => i.user.id === userId,
       time: 30000,
     });
 
     collector.on("collect", async (i) => {
       collector.stop();
-      await module.exports.execute(i);
+      await this.execute(i);
     });
 
     collector.on("end", async () => {

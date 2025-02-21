@@ -45,29 +45,42 @@ module.exports = {
 };
 
 async function playWar(interaction, userId, bet) {
-  const playerCard = Math.floor(Math.random() * 13) + 2;
-  const dealerCard = Math.floor(Math.random() * 13) + 2;
+  const suits = ["♠️", "♥️", "♦️", "♣️"];
+  const getRandomCard = () => ({
+    value: Math.floor(Math.random() * 13) + 2,
+    suit: suits[Math.floor(Math.random() * suits.length)],
+  });
+
+  const playerCard = getRandomCard();
+  const dealerCard = getRandomCard();
 
   const result =
-    playerCard > dealerCard ? "win" : playerCard < dealerCard ? "lose" : "tie";
+    playerCard.value > dealerCard.value
+      ? "win"
+      : playerCard.value < dealerCard.value
+      ? "lose"
+      : "tie";
 
   let winnings = 0;
   if (result === "win") winnings = bet;
   if (result === "lose") winnings = -bet;
 
-  await updateUserBalance(userId, winnings);
+  if (result !== "tie") await updateUserBalance(userId, winnings);
 
   const streak = await getUserStreak(userId);
-  const newStreak =
-    result === "win"
-      ? streak >= 0
-        ? streak + 1
-        : 1
-      : result === "lose"
-      ? streak <= 0
-        ? streak - 1
-        : -1
-      : 0;
+  let newStreak = streak;
+
+  switch (result) {
+    case "win":
+      newStreak = streak >= 0 ? streak + 1 : 1;
+      break;
+    case "lose":
+      newStreak = streak <= 0 ? streak - 1 : -1;
+      break;
+    case "tie":
+      break;
+  }
+
   await updateUserStreak(userId, newStreak);
 
   const tips = {
@@ -92,8 +105,16 @@ async function playWar(interaction, userId, bet) {
     .setTitle("⚔️ War")
     .setDescription(`You bet **${bet} coins**`)
     .addFields(
-      { name: "🎴 Your Card", value: `${playerCard}`, inline: true },
-      { name: "🎴 Dealer's Card", value: `${dealerCard}`, inline: true },
+      {
+        name: "🎴 Your Card",
+        value: `${playerCard.value} ${playerCard.suit}`,
+        inline: true,
+      },
+      {
+        name: "🎴 Dealer's Card",
+        value: `${dealerCard.value} ${dealerCard.suit}`,
+        inline: true,
+      },
       {
         name: "🎯 Result",
         value:
@@ -147,8 +168,9 @@ async function playWar(interaction, userId, bet) {
     ephemeral: false,
   });
 
+
   const filter = (i) => i.user.id === userId;
-  const collector = interaction.channel.createMessageComponentCollector({
+  const collector = message.createMessageComponentCollector({
     filter,
     time: 30000,
   });

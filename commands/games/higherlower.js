@@ -6,7 +6,11 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
-const { getUserBalance, updateUserBalance, markUserActive } = require("../../utils/database");
+const {
+  getUserBalance,
+  updateUserBalance,
+  markUserActive,
+} = require("../../utils/database");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -51,7 +55,10 @@ module.exports = {
         .setLabel("⬇️ Lower")
         .setStyle(ButtonStyle.Primary);
 
-      const row = new ActionRowBuilder().addComponents(higherButton, lowerButton);
+      const row = new ActionRowBuilder().addComponents(
+        higherButton,
+        lowerButton
+      );
 
       const embed = new EmbedBuilder()
         .setTitle("🔢 Higher or Lower")
@@ -134,9 +141,13 @@ module.exports = {
             },
             { name: "💰 New Balance", value: `${balance} coins`, inline: true }
           )
-          .setColor(won ? "Green" : secondNumber === firstNumber ? "Yellow" : "Red")
+          .setColor(
+            won ? "Green" : secondNumber === firstNumber ? "Yellow" : "Red"
+          )
           .setFooter({
-            text: dealerComments[Math.floor(Math.random() * dealerComments.length)],
+            text: dealerComments[
+              Math.floor(Math.random() * dealerComments.length)
+            ],
           });
 
         const playAgainButton = new ButtonBuilder()
@@ -165,10 +176,11 @@ module.exports = {
           components: won ? [resultRow] : [],
         });
 
-        const newCollector = interaction.channel.createMessageComponentCollector({
-          filter,
-          time: 30000,
-        });
+        const newCollector =
+          interaction.channel.createMessageComponentCollector({
+            filter,
+            time: 30000,
+          });
 
         newCollector.on("collect", async (btnInteraction) => {
           newCollector.stop();
@@ -177,8 +189,19 @@ module.exports = {
               content: "🔄 Restarting game...",
               components: [],
             });
-            playGame(interaction, Math.floor(Math.random() * 100) + 1, bet, 0);
+            playGame(
+              interaction,
+              Math.floor(Math.random() * 100) + 1,
+              bet,
+              currentStreak
+            );
           } else if (btnInteraction.customId === "double") {
+            if (balance < bet * 2) {
+              return btnInteraction.reply({
+                content: "❌ You don't have enough coins to double your bet!",
+                ephemeral: true,
+              });
+            }
             playGame(btnInteraction, secondNumber, bet * 2, currentStreak);
           } else {
             await btnInteraction.update({
@@ -191,6 +214,10 @@ module.exports = {
         newCollector.on("end", async () => {
           await interaction.editReply({ components: [] });
         });
+      });
+
+      collector.on("end", async () => {
+        await interaction.editReply({ components: [] });
       });
     }
 

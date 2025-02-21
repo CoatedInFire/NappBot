@@ -28,12 +28,7 @@ const HAND_RANKINGS = [
   "Royal Flush",
 ];
 
-const AI_PLAYSTYLES = {
-  AGGRESSIVE: "Aggressive",
-  CAUTIOUS: "Cautious",
-  BALANCED: "Balanced",
-};
-
+const AI_PLAYSTYLES = ["Aggressive", "Cautious", "Balanced"];
 const GAME_STAGES = ["Pre-Flop", "Flop", "Turn", "River"];
 
 module.exports = {
@@ -59,23 +54,17 @@ module.exports = {
   modulePath: path.resolve(__filename),
 
   async execute(interaction) {
-    console.log(`⚡ Executing /poker from: ${module.exports.modulePath}`);
-
     await interaction.deferReply();
-
     const userId = interaction.user.id;
     const buyIn = interaction.options.getInteger("buy_in");
     const aiCount = interaction.options.getInteger("players") || 0;
     const userBalance = await getUserBalance(userId);
 
-    if (userBalance < buyIn) {
-      return interaction.editReply({
-        content: "❌ You don't have enough money to buy in!",
-        ephemeral: true,
-      });
+    if (userBalance.balance < buyIn) {
+      return interaction.editReply("❌ You don't have enough money to buy in!");
     }
 
-    await updateUserBalance(userId, -buyIn);
+    await updateUserBalance(userId, -buyIn, 0);
 
     let players = [
       {
@@ -95,20 +84,15 @@ module.exports = {
         chips: buyIn,
         hand: [],
         folded: false,
-        playstyle: Object.values(AI_PLAYSTYLES)[Math.floor(Math.random() * 3)],
+        playstyle:
+          AI_PLAYSTYLES[Math.floor(Math.random() * AI_PLAYSTYLES.length)],
       });
     }
 
-    let currentPot = 0;
+    let pot = 0;
     let currentBet = POKER_STARTING_BLIND;
-    let currentPlayerIndex = 0;
+    let communityCards = [];
     let gameStage = 0;
-
-    function dealCards() {
-      players.forEach((player) => {
-        player.hand = [drawCard(), drawCard()];
-      });
-    }
 
     function drawCard() {
       const suits = ["♠", "♥", "♦", "♣"];
@@ -133,87 +117,96 @@ module.exports = {
       };
     }
 
+    function dealCards() {
+      players.forEach((player) => {
+        player.hand = [drawCard(), drawCard()];
+      });
+    }
+
     function evaluateHand(hand) {
       return HAND_RANKINGS[Math.floor(Math.random() * HAND_RANKINGS.length)];
     }
 
-    function getPokerTip(handRank, stage) {
-      const tips = {
-        "Pre-Flop": {
-          "High Card":
-            "You might want to fold unless you're in a late position.",
-          "One Pair": "Pairs are decent, but watch for overbets.",
-          "Two Pair": "You have a strong starting hand, consider raising.",
-          "Three of a Kind":
-            "A strong start! Raising aggressively is an option.",
-        },
-        Flop: {
-          "High Card": "Bluffing might work, but folding is safer.",
-          "One Pair": "Look for signs of an opponent’s strong hand.",
-          "Two Pair": "Still strong! Consider a value bet.",
-          "Three of a Kind":
-            "Strong! Push the pot but don’t scare opponents away.",
-        },
-        Turn: {
-          "High Card": "If you’re still here, consider bluffing carefully.",
-          "One Pair": "Odds of improvement are low. Evaluate your position.",
-          "Two Pair":
-            "Good hand, but watch for potential straights or flushes.",
-          "Three of a Kind": "Push more if the board isn’t dangerous.",
-        },
-        River: {
-          "High Card": "Bluffing is risky here, but might be your only move.",
-          "One Pair": "A small bet may push opponents to fold.",
-          "Two Pair": "Good hand, but only bet if the board is safe.",
-          "Three of a Kind": "If no threats appear, bet strong!",
-        },
-      };
-
-      return tips[stage][handRank] || "Trust your instincts!";
-    }
-
-    async function nextTurn() {
-      let player = players[currentPlayerIndex];
-      if (player.folded) {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-        return nextTurn();
+    function placeBet(player, amount) {
+      if (player.chips < amount) {
+        player.folded = true;
+        return 0;
       }
-
-      let handRank = evaluateHand(player.hand);
-      let pokerTip = getPokerTip(handRank, GAME_STAGES[gameStage]);
-
-      const embed = new EmbedBuilder()
-        .setTitle(`♠️ Poker - ${GAME_STAGES[gameStage]}`)
-        .setDescription(`${player.name}'s turn`)
-        .setColor("Blurple")
-        .addFields(
-          { name: "💡 Poker Tip", value: pokerTip },
-          { name: "🔥 Current Streak", value: await getStreakMessage(userId) }
-        );
-
-      await interaction.editReply({ embeds: [embed] });
-
-      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+      player.chips -= amount;
+      pot += amount;
+      return amount;
     }
 
-    async function getStreakMessage(userId) {
-      const { streak, lastResult } = await getUserStreak(userId);
-      if (streak === 0) return "No active streak.";
-      return lastResult === "win"
-        ? `🔥 Win Streak: ${streak}`
-        : `❄️ Loss Streak: ${streak}`;
+    async function bettingRound() {
+      for (let player of players) {
+        if (player.folded) continue;
+
+        if (player.playstyle === "Human") {
+          await interaction.editReply(
+            `${player.name}, it's your turn! Type **call**, **raise**, or **fold**.`
+          );
+          return;
+        } else {
+          if (player.playstyle === "Aggressive") {
+            placeBet(player, currentBet * 2);
+          } else if (player.playstyle === "Cautious") {
+            if (Math.random() < 0.5) player.folded = true;
+            else placeBet(player, currentBet);
+          } else {
+            placeBet(player, currentBet);
+          }
+        }
+      }
     }
 
-    async function updateStreak(userId, result) {
-      const { streak, lastResult } = await getUserStreak(userId);
-      if (lastResult === result) {
-        await updateUserStreak(userId, streak + 1, result);
+    async function nextStage() {
+      if (gameStage < 3) {
+        communityCards.push(drawCard());
+        if (gameStage === 0) communityCards.push(drawCard(), drawCard());
+        gameStage++;
+        await bettingRound();
       } else {
-        await updateUserStreak(userId, 1, result);
+        await determineWinner();
+      }
+    }
+
+    async function determineWinner() {
+      let bestHand = null;
+      let winner = null;
+
+      players.forEach((player) => {
+        if (!player.folded) {
+          let handRank = evaluateHand([...player.hand, ...communityCards]);
+          if (
+            !bestHand ||
+            HAND_RANKINGS.indexOf(handRank) > HAND_RANKINGS.indexOf(bestHand)
+          ) {
+            bestHand = handRank;
+            winner = player;
+          }
+        }
+      });
+
+      if (winner) {
+        winner.chips += pot;
+        if (winner.id === userId) {
+          await updateUserBalance(userId, pot, 0);
+          await updateUserStreak(userId, "win");
+        } else {
+          await updateUserStreak(userId, "loss");
+        }
+
+        const embed = new EmbedBuilder()
+          .setTitle("♠️ Poker Game Over")
+          .setDescription(`🏆 Winner: **${winner.name}** with **${bestHand}**!`)
+          .addFields({ name: "💰 Pot", value: `${pot} Chips` })
+          .setColor("Gold");
+
+        await interaction.editReply({ embeds: [embed] });
       }
     }
 
     dealCards();
-    nextTurn();
+    await nextStage();
   },
 };

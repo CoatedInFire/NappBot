@@ -10,7 +10,8 @@ const {
   getUserBalance,
   updateUserBalance,
   getUserStreak,
-  updateUserStreak,
+  updateWinStreak,
+  updateLossStreak,
   markUserActive,
 } = require("../../utils/database");
 
@@ -121,8 +122,13 @@ module.exports = {
         newStreak.losses = (streakData.losses || 0) + 1;
       }
 
-      await updateUserBalance(userId, earnings);
-      await updateUserStreak(userId, newStreak);
+      await updateUserBalance(userId, earnings, 0);
+
+      if (earnings > 0) {
+        await updateWinStreak(userId, newStreak.wins);
+      } else if (earnings < 0) {
+        await updateLossStreak(userId, newStreak.losses);
+      }
 
       let embed = new EmbedBuilder()
         .setTitle("🃏 Blackjack Result")
@@ -139,42 +145,19 @@ module.exports = {
         )
         .setColor(color);
 
-      await interaction.editReply({ embeds: [embed], components: [] });
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setCustomId("play_again")
+          .setLabel("Play Again")
+          .setStyle(ButtonStyle.Success)
+      );
+
+      await interaction.editReply({ embeds: [embed], components: [row] });
     }
 
     const message = await interaction.reply({
       content: "🃏 Dealing cards...",
-      ephemeral: false,
       fetchReply: true,
-    });
-
-    const filter = (i) => i.user.id === userId;
-    const collector = message.createMessageComponentCollector({
-      filter,
-      time: 60000,
-    });
-
-    collector.on("collect", async (i) => {
-      if (i.customId === "hit") {
-        playerHand.push(drawCard(deck));
-        if (calculateHandValue(playerHand) > 21) {
-          collector.stop();
-          return dealerTurn();
-        }
-      } else if (i.customId === "stand") {
-        collector.stop();
-        return dealerTurn();
-      } else if (i.customId === "double") {
-        bet *= 2;
-        playerHand.push(drawCard(deck));
-        collector.stop();
-        return dealerTurn();
-      }
-      await updateGame(i);
-    });
-
-    collector.on("end", async () => {
-      await interaction.editReply({ components: [] });
     });
 
     async function updateGame(i) {
@@ -202,10 +185,44 @@ module.exports = {
           .setCustomId("double")
           .setLabel("Double Down")
           .setStyle(ButtonStyle.Danger)
-          .setDisabled(bet > balanceData.balance)
+          .setDisabled(bet * 2 > balanceData.balance)
       );
 
-      await i.editReply({ embeds: [embed], components: [row] });
+      await i.update({ embeds: [embed], components: [row] });
     }
+
+    const filter = (i) => i.user.id === userId;
+    const collector = message.createMessageComponentCollector({
+      filter,
+      time: 60000,
+    });
+
+    collector.on("collect", async (i) => {
+      if (i.customId === "hit") {
+        playerHand.push(drawCard(deck));
+        if (calculateHandValue(playerHand) > 21) {
+          collector.stop();
+          await dealerTurn();
+        } else {
+          await updateGame(i);
+        }
+      } else if (i.customId === "stand") {
+        collector.stop();
+        await dealerTurn();
+      } else if (i.customId === "double") {
+        bet *= 2;
+        playerHand.push(drawCard(deck));
+        collector.stop();
+        await dealerTurn();
+      } else if (i.customId === "play_again") {
+        await execute(interaction);
+      }
+    });
+
+    collector.on("end", async () => {
+      await interaction.editReply({ components: [] });
+    });
+
+    await updateGame(interaction);
   },
 };

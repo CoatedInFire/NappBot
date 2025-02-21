@@ -50,9 +50,6 @@ try {
   process.exit(1);
 }
 
-// =======================
-// USER PREFERENCE FUNCTIONS
-// =======================
 async function getUserPreference(userId) {
   try {
     const [rows] = await databasePool.execute(
@@ -84,22 +81,19 @@ async function setUserPreference(userId, preference) {
   }
 }
 
-// =======================
-// BALANCE FUNCTIONS
-// =======================
 async function getUserBalance(userId) {
   try {
     const [rows] = await databasePool.execute(
-      "SELECT balance, bank_balance FROM users WHERE user_id = ?",
+      "SELECT balance, bank_balance, streak FROM users WHERE user_id = ?",
       [userId]
     );
 
     if (rows.length === 0) {
       await databasePool.execute(
-        "INSERT INTO users (user_id, balance, bank_balance, win_streak, loss_streak) VALUES (?, ?, ?, 0, 0)",
+        "INSERT INTO users (user_id, balance, bank_balance, streak) VALUES (?, ?, ?, 0)",
         [userId, 5000, 0]
       );
-      return { balance: 5000, bank_balance: 0, win_streak: 0, loss_streak: 0 };
+      return { balance: 5000, bank_balance: 0, streak: 0 };
     }
 
     return rows[0];
@@ -140,38 +134,41 @@ async function updateUserBalance(userId, walletChange, bankChange) {
 async function getUserStreak(userId) {
   try {
     const [rows] = await databasePool.execute(
-      "SELECT win_streak, loss_streak FROM users WHERE user_id = ?",
+      "SELECT streak FROM users WHERE user_id = ?",
       [userId]
     );
-    return rows.length ? rows[0] : { win_streak: 0, loss_streak: 0 };
+    return rows.length ? rows[0].streak : 0;
   } catch (error) {
     console.error("❌ MySQL Error (getUserStreak):", error);
-    return { win_streak: 0, loss_streak: 0 };
+    return 0;
   }
 }
 
-async function updateWinStreak(userId) {
-  try {
-    await databasePool.execute(
-      "UPDATE users SET win_streak = win_streak + 1, loss_streak = 0 WHERE user_id = ?",
-      [userId]
+async function updateStreak(userId, result) {
+  if (!userId || !["win", "loss"].includes(result)) {
+    console.error(
+      `❌ updateStreak Error: Invalid userId or result - ${userId}, ${result}`
     );
-    return true;
-  } catch (error) {
-    console.error("❌ MySQL Error (updateWinStreak):", error);
     return false;
   }
-}
 
-async function updateLossStreak(userId) {
   try {
-    await databasePool.execute(
-      "UPDATE users SET loss_streak = loss_streak + 1, win_streak = 0 WHERE user_id = ?",
-      [userId]
-    );
+    if (result === "win") {
+      await databasePool.execute(
+        "UPDATE users SET streak = GREATEST(streak + 1, 1) WHERE user_id = ?",
+        [userId]
+      );
+    } else if (result === "loss") {
+      await databasePool.execute(
+        "UPDATE users SET streak = LEAST(streak - 1, -1) WHERE user_id = ?",
+        [userId]
+      );
+    }
     return true;
   } catch (error) {
-    console.error("❌ MySQL Error (updateLossStreak):", error);
+    console.error(
+      `❌ MySQL Error (updateStreak): ${error.code} - ${error.sqlMessage}`
+    );
     return false;
   }
 }
@@ -183,6 +180,5 @@ module.exports = {
   getUserBalance,
   updateUserBalance,
   getUserStreak,
-  updateWinStreak,
-  updateLossStreak,
+  updateStreak,
 };

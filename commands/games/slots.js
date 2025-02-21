@@ -6,7 +6,12 @@ const {
   ActionRowBuilder,
   ButtonStyle,
 } = require("discord.js");
-const { getUserBalance, updateUserBalance } = require("../../utils/database");
+const {
+  getUserBalance,
+  updateUserBalance,
+  getUserStreak,
+  updateUserStreak,
+} = require("../../utils/database");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -26,8 +31,8 @@ module.exports = {
     console.log(`⚡ Executing /slots from: ${module.exports.modulePath}`);
 
     const userId = interaction.user.id;
-    let bet = interaction.options.getInteger("bet");
-    let balance = await getUserBalance(userId);
+    const bet = interaction.options.getInteger("bet");
+    const balance = await getUserBalance(userId);
 
     if (bet > balance) {
       return interaction.reply({
@@ -44,11 +49,21 @@ module.exports = {
     const row2 = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
     const row3 = [getRandomSymbol(), getRandomSymbol(), getRandomSymbol()];
 
-    let win = row2[0] === row2[1] && row2[1] === row2[2];
-    let jackpot = win && row2[0] === "💎";
+    const win = row2[0] === row2[1] && row2[1] === row2[2];
+    const jackpot = win && row2[0] === "💎";
 
     let winnings = win ? (jackpot ? bet * 10 : bet * 3) : -bet;
     await updateUserBalance(userId, winnings);
+
+    const streak = await getUserStreak(userId);
+    const newStreak = win
+      ? streak >= 0
+        ? streak + 1
+        : 1
+      : streak <= 0
+      ? streak - 1
+      : -1;
+    await updateUserStreak(userId, newStreak);
 
     const embed = new EmbedBuilder()
       .setTitle("🎰 Slot Machine Results")
@@ -60,6 +75,28 @@ module.exports = {
       `
       )
       .setColor(win ? "Green" : "Red")
+      .addFields(
+        {
+          name: "Result",
+          value: win ? "✅ You won!" : "❌ You lost!",
+          inline: true,
+        },
+        {
+          name: "Payout",
+          value: win ? `+${winnings} coins` : `-${bet} coins`,
+          inline: true,
+        },
+        {
+          name: "Streak",
+          value:
+            newStreak > 0
+              ? `🔥 **${newStreak}-win streak!**`
+              : newStreak < 0
+              ? `❄️ **${Math.abs(newStreak)}-loss streak!**`
+              : "😐 No streak",
+          inline: false,
+        }
+      )
       .setFooter({
         text: win ? `You won ${winnings} coins!` : "Better luck next time!",
       });
@@ -71,24 +108,22 @@ module.exports = {
 
     const row = new ActionRowBuilder().addComponents(playAgainButton);
 
-    await interaction.reply({
+    const message = await interaction.reply({
       embeds: [embed],
       components: [row],
       ephemeral: false,
     });
 
-    const filter = (i) => i.user.id === userId;
-    const collector = interaction.channel.createMessageComponentCollector({
+    const filter = (i) => i.user.id === userId && i.customId === "play_again";
+    const collector = message.createMessageComponentCollector({
       filter,
       time: 30000,
     });
 
     collector.on("collect", async (i) => {
-      if (i.customId === "play_again") {
-        await i.deferUpdate();
-        collector.stop();
-        await module.exports.execute(i);
-      }
+      await i.deferUpdate();
+      collector.stop();
+      await module.exports.execute(i);
     });
 
     collector.on("end", async () => {
