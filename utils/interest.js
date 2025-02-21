@@ -8,7 +8,7 @@ function getInterestRate(balance, isActive) {
   else if (balance < 100000) baseRate = 0.05; // 5% for < 100k
   else if (balance < 500000) baseRate = 0.03; // 3% for < 500k
   else if (balance < 1000000) baseRate = 0.02; // 2% for < 1M
-  else baseRate = 0.01;
+  else baseRate = 0.01; // 1% for 1M+
 
   if (isActive) baseRate += 0.01;
 
@@ -27,10 +27,32 @@ async function getActiveUsers() {
   }
 }
 
+async function wasInterestAppliedRecently() {
+  try {
+    const [rows] = await database.execute(
+      "SELECT MAX(last_interest) AS last_applied FROM users"
+    );
+    const lastApplied = rows[0]?.last_applied;
+    if (!lastApplied) return false;
+
+    const lastTime = new Date(lastApplied).getTime();
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+
+    return lastTime > oneHourAgo; 
+  } catch (error) {
+    console.error("❌ MySQL Error (wasInterestAppliedRecently):", error);
+    return false;
+  }
+}
+
 async function applyInterest() {
   try {
-    const activeUsers = await getActiveUsers();
+    if (await wasInterestAppliedRecently()) {
+      console.log("⏳ Interest already applied recently. Skipping...");
+      return;
+    }
 
+    const activeUsers = await getActiveUsers();
     const [users] = await database.execute(
       "SELECT user_id, bank_balance FROM users WHERE bank_balance > 0"
     );
@@ -43,7 +65,7 @@ async function applyInterest() {
 
       if (interest > 0) {
         await database.execute(
-          "UPDATE users SET bank_balance = bank_balance + ? WHERE user_id = ?",
+          "UPDATE users SET bank_balance = bank_balance + ?, last_interest = NOW() WHERE user_id = ?",
           [interest, user_id]
         );
         affectedUsers++;
@@ -59,6 +81,12 @@ async function applyInterest() {
   }
 }
 
-setInterval(applyInterest, 60 * 60 * 1000);
 
+setTimeout(async () => {
+  if (!(await wasInterestAppliedRecently())) {
+    await applyInterest();
+  }
+}, 5000);
+
+setInterval(applyInterest, 60 * 60 * 1000);
 module.exports = { applyInterest };
