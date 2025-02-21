@@ -173,6 +173,15 @@ async function updateStreak(userId, result) {
   }
 }
 
+async function getUserLastWork(userId) {
+  const result = await database.execute(
+    "SELECT last_work FROM users WHERE user_id = ?",
+    [userId]
+  );
+  return result[0]?.last_work || null;
+}
+
+
 module.exports = {
   database: databasePool,
   getUserPreference,
