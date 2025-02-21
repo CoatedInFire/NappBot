@@ -50,13 +50,15 @@ try {
   process.exit(1);
 }
 
+// =======================
+// USER PREFERENCE FUNCTIONS
+// =======================
 async function getUserPreference(userId) {
   try {
     const [rows] = await databasePool.execute(
       "SELECT preference FROM user_preferences WHERE user_id = ?",
       [userId.trim()]
     );
-
     return rows.length > 0 ? rows[0].preference : "random";
   } catch (error) {
     console.error(
@@ -82,19 +84,22 @@ async function setUserPreference(userId, preference) {
   }
 }
 
+// =======================
+// BALANCE FUNCTIONS
+// =======================
 async function getUserBalance(userId) {
   try {
-    const [rows] = await database.execute(
+    const [rows] = await databasePool.execute(
       "SELECT balance, bank_balance FROM users WHERE user_id = ?",
       [userId]
     );
 
     if (rows.length === 0) {
-      await database.execute(
-        "INSERT INTO users (user_id, balance, bank_balance) VALUES (?, ?, ?)",
+      await databasePool.execute(
+        "INSERT INTO users (user_id, balance, bank_balance, win_streak, loss_streak) VALUES (?, ?, ?, 0, 0)",
         [userId, 5000, 0]
       );
-      return { balance: 5000, bank_balance: 0 };
+      return { balance: 5000, bank_balance: 0, win_streak: 0, loss_streak: 0 };
     }
 
     return rows[0];
@@ -106,7 +111,7 @@ async function getUserBalance(userId) {
 
 async function updateUserBalance(userId, walletChange, bankChange) {
   try {
-    await database.execute(
+    await databasePool.execute(
       `UPDATE users 
        SET balance = balance + ?, bank_balance = bank_balance + ? 
        WHERE user_id = ?;`,
@@ -119,10 +124,55 @@ async function updateUserBalance(userId, walletChange, bankChange) {
   }
 }
 
+// =======================
+// STREAK FUNCTIONS
+// =======================
+async function getUserStreak(userId) {
+  try {
+    const [rows] = await databasePool.execute(
+      "SELECT win_streak, loss_streak FROM users WHERE user_id = ?",
+      [userId]
+    );
+    return rows.length ? rows[0] : { win_streak: 0, loss_streak: 0 };
+  } catch (error) {
+    console.error("❌ MySQL Error (getUserStreak):", error);
+    return { win_streak: 0, loss_streak: 0 };
+  }
+}
+
+async function updateWinStreak(userId) {
+  try {
+    await databasePool.execute(
+      "UPDATE users SET win_streak = win_streak + 1, loss_streak = 0 WHERE user_id = ?",
+      [userId]
+    );
+    return true;
+  } catch (error) {
+    console.error("❌ MySQL Error (updateWinStreak):", error);
+    return false;
+  }
+}
+
+async function updateLossStreak(userId) {
+  try {
+    await databasePool.execute(
+      "UPDATE users SET loss_streak = loss_streak + 1, win_streak = 0 WHERE user_id = ?",
+      [userId]
+    );
+    return true;
+  } catch (error) {
+    console.error("❌ MySQL Error (updateLossStreak):", error);
+    return false;
+  }
+}
+
 module.exports = {
   database: databasePool,
   getUserPreference,
   setUserPreference,
   getUserBalance,
   updateUserBalance,
+  getUserStreak,
+  updateWinStreak,
+  updateLossStreak,
 };
