@@ -57,7 +57,7 @@ module.exports = {
           name: "💻 System Metrics",
           value:
             `**System Uptime:** ${metrics.uptime}\n` +
-            `**RAM Usage:** ${metrics.usedRam} GB / ${metrics.totalRam} GB\n` +
+            `**RAM Usage:** ${metrics.usedRam} GB\n` +
             `**Free RAM:** ${metrics.freeRam} GB\n` +
             `**CPU Load (1m avg):** ${metrics.cpuLoad}%\n` +
             `**Bot Process RAM:** ${metrics.processMemory} MB`,
@@ -66,7 +66,7 @@ module.exports = {
         {
           name: "📜 Special thanks to:",
           value:
-            "<:Dusty:134226991835932680> Dusty\n<:James:134226946533255169> James\n<:Victor:134227032356247572> Victor\n<:Sabes:1342270316096786554> Sabes",
+            "<:Dusty:1342269918359326801> Dusty\n<:James:1342269465332551691> James\n<:Victor:1342270323562647572> Victor\n<:Sabes:1342270316096786554> Sabes",
           inline: false,
         }
       )

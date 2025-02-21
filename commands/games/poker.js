@@ -7,9 +7,10 @@ const {
   ButtonStyle,
 } = require("discord.js");
 const {
-  database,
   getUserBalance,
   updateUserBalance,
+  getUserStreak,
+  updateUserStreak,
 } = require("../../utils/database");
 
 const POKER_STARTING_BLIND = 100;
@@ -26,6 +27,14 @@ const HAND_RANKINGS = [
   "Straight Flush",
   "Royal Flush",
 ];
+
+const AI_PLAYSTYLES = {
+  AGGRESSIVE: "Aggressive",
+  CAUTIOUS: "Cautious",
+  BALANCED: "Balanced",
+};
+
+const GAME_STAGES = ["Pre-Flop", "Flop", "Turn", "River"];
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -67,6 +76,7 @@ module.exports = {
     }
 
     await updateUserBalance(userId, -buyIn);
+
     let players = [
       {
         id: userId,
@@ -74,6 +84,7 @@ module.exports = {
         chips: buyIn,
         hand: [],
         folded: false,
+        playstyle: "Human",
       },
     ];
 
@@ -84,12 +95,14 @@ module.exports = {
         chips: buyIn,
         hand: [],
         folded: false,
+        playstyle: Object.values(AI_PLAYSTYLES)[Math.floor(Math.random() * 3)],
       });
     }
 
     let currentPot = 0;
     let currentBet = POKER_STARTING_BLIND;
     let currentPlayerIndex = 0;
+    let gameStage = 0;
 
     function dealCards() {
       players.forEach((player) => {
@@ -124,6 +137,41 @@ module.exports = {
       return HAND_RANKINGS[Math.floor(Math.random() * HAND_RANKINGS.length)];
     }
 
+    function getPokerTip(handRank, stage) {
+      const tips = {
+        "Pre-Flop": {
+          "High Card":
+            "You might want to fold unless you're in a late position.",
+          "One Pair": "Pairs are decent, but watch for overbets.",
+          "Two Pair": "You have a strong starting hand, consider raising.",
+          "Three of a Kind":
+            "A strong start! Raising aggressively is an option.",
+        },
+        Flop: {
+          "High Card": "Bluffing might work, but folding is safer.",
+          "One Pair": "Look for signs of an opponent’s strong hand.",
+          "Two Pair": "Still strong! Consider a value bet.",
+          "Three of a Kind":
+            "Strong! Push the pot but don’t scare opponents away.",
+        },
+        Turn: {
+          "High Card": "If you’re still here, consider bluffing carefully.",
+          "One Pair": "Odds of improvement are low. Evaluate your position.",
+          "Two Pair":
+            "Good hand, but watch for potential straights or flushes.",
+          "Three of a Kind": "Push more if the board isn’t dangerous.",
+        },
+        River: {
+          "High Card": "Bluffing is risky here, but might be your only move.",
+          "One Pair": "A small bet may push opponents to fold.",
+          "Two Pair": "Good hand, but only bet if the board is safe.",
+          "Three of a Kind": "If no threats appear, bet strong!",
+        },
+      };
+
+      return tips[stage][handRank] || "Trust your instincts!";
+    }
+
     async function nextTurn() {
       let player = players[currentPlayerIndex];
       if (player.folded) {
@@ -131,133 +179,38 @@ module.exports = {
         return nextTurn();
       }
 
+      let handRank = evaluateHand(player.hand);
+      let pokerTip = getPokerTip(handRank, GAME_STAGES[gameStage]);
+
       const embed = new EmbedBuilder()
-        .setTitle("♠️ Poker Game")
+        .setTitle(`♠️ Poker - ${GAME_STAGES[gameStage]}`)
         .setDescription(`${player.name}'s turn`)
         .setColor("Blurple")
         .addFields(
-          { name: "Pot", value: `${currentPot} chips`, inline: true },
-          { name: "Current Bet", value: `${currentBet} chips`, inline: true },
-          {
-            name: "Your Hand",
-            value: player.hand.map((c) => `${c.value}${c.suit}`).join(" | "),
-          }
+          { name: "💡 Poker Tip", value: pokerTip },
+          { name: "🔥 Current Streak", value: await getStreakMessage(userId) }
         );
 
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("call")
-          .setLabel("Call")
-          .setStyle(ButtonStyle.Primary),
-        new ButtonBuilder()
-          .setCustomId("raise")
-          .setLabel("Raise")
-          .setStyle(ButtonStyle.Success),
-        new ButtonBuilder()
-          .setCustomId("fold")
-          .setLabel("Fold")
-          .setStyle(ButtonStyle.Danger)
-      );
+      await interaction.editReply({ embeds: [embed] });
 
-      const message = await interaction.editReply({
-        embeds: [embed],
-        components: [row],
-      });
-
-      const collector = message.createMessageComponentCollector({
-        time: 30000,
-      });
-      collector.on("collect", async (i) => {
-        if (i.user.id !== player.id)
-          return i.reply({ content: "❌ Not your turn!", ephemeral: true });
-
-        if (i.customId === "fold") {
-          player.folded = true;
-          await i.update({ content: `${player.name} folds.`, components: [] });
-        } else if (i.customId === "call") {
-          if (player.chips < currentBet) {
-            return i.reply({
-              content: "❌ Not enough chips to call!",
-              ephemeral: true,
-            });
-          }
-          player.chips -= currentBet;
-          currentPot += currentBet;
-          await i.update({ content: `${player.name} calls.`, components: [] });
-        } else if (i.customId === "raise") {
-          const raiseAmount = currentBet * 2;
-          if (player.chips < raiseAmount) {
-            return i.reply({
-              content: "❌ Not enough chips to raise!",
-              ephemeral: true,
-            });
-          }
-          player.chips -= raiseAmount;
-          currentPot += raiseAmount;
-          currentBet = raiseAmount;
-          await i.update({
-            content: `${player.name} raises to ${raiseAmount}.`,
-            components: [],
-          });
-        }
-
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-        if (players.filter((p) => !p.folded).length === 1) {
-          return endGame();
-        }
-        nextTurn();
-      });
-
-      collector.on("end", () => {
-        currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
-        if (players.filter((p) => !p.folded).length === 1) {
-          return endGame();
-        }
-        nextTurn();
-      });
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
     }
 
-    async function endGame() {
-      const activePlayers = players.filter((p) => !p.folded);
-      let winner =
-        activePlayers[Math.floor(Math.random() * activePlayers.length)];
-      const winningHand = evaluateHand(winner.hand);
+    async function getStreakMessage(userId) {
+      const { streak, lastResult } = await getUserStreak(userId);
+      if (streak === 0) return "No active streak.";
+      return lastResult === "win"
+        ? `🔥 Win Streak: ${streak}`
+        : `❄️ Loss Streak: ${streak}`;
+    }
 
-      await updateUserBalance(winner.id, currentPot);
-
-      const embed = new EmbedBuilder()
-        .setTitle("🏆 Poker Game Over!")
-        .setDescription(
-          `${winner.name} wins the pot of ${currentPot} chips with a **${winningHand}**!`
-        )
-        .setColor("Gold");
-
-      const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-          .setCustomId("play_again")
-          .setLabel("🔄 Play Again")
-          .setStyle(ButtonStyle.Success)
-      );
-
-      const message = await interaction.editReply({
-        embeds: [embed],
-        components: [row],
-      });
-
-      const collector = message.createMessageComponentCollector({
-        time: 30000,
-      });
-
-      collector.on("collect", async (i) => {
-        if (i.customId === "play_again" && i.user.id === userId) {
-          await i.update({ content: "🔄 Restarting game...", components: [] });
-          await module.exports.execute(interaction);
-        }
-      });
-
-      collector.on("end", async () => {
-        await message.edit({ components: [] });
-      });
+    async function updateStreak(userId, result) {
+      const { streak, lastResult } = await getUserStreak(userId);
+      if (lastResult === result) {
+        await updateUserStreak(userId, streak + 1, result);
+      } else {
+        await updateUserStreak(userId, 1, result);
+      }
     }
 
     dealCards();

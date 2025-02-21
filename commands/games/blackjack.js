@@ -6,7 +6,13 @@ const {
   ActionRowBuilder,
   ButtonStyle,
 } = require("discord.js");
-const { getUserBalance, updateUserBalance } = require("../../utils/database");
+const {
+  getUserBalance,
+  updateUserBalance,
+  getUserStreak,
+  updateUserStreak,
+  markUserActive,
+} = require("../../utils/database");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -27,14 +33,17 @@ module.exports = {
 
     const userId = interaction.user.id;
     let bet = interaction.options.getInteger("bet");
-    let balance = await getUserBalance(userId);
+    let balanceData = await getUserBalance(userId);
+    let streakData = await getUserStreak(userId);
 
-    if (bet > balance) {
+    if (!balanceData || bet > balanceData.balance) {
       return interaction.reply({
         content: "❌ You don't have enough coins!",
         ephemeral: true,
       });
     }
+
+    await markUserActive(userId);
 
     const deck = generateDeck();
     let playerHand = [drawCard(deck), drawCard(deck)];
@@ -84,77 +93,99 @@ module.exports = {
       return hand.map((card) => `${card.rank}${card.suit}`).join(" ");
     }
 
-    async function endGame(result) {
-      let embed = new EmbedBuilder()
-        .setTitle("🃏 Blackjack - Game Over")
-        .setDescription(
-          `**Your Hand:** ${formatHand(playerHand)} (${calculateHandValue(
-            playerHand
-          )})\n` +
-            `**Dealer's Hand:** ${formatHand(dealerHand)} (${calculateHandValue(
-              dealerHand
-            )})`
-        )
-        .setColor(result.color)
-        .setFooter({ text: `You ${result.text}! ${result.earnings} coins` });
-
-      const playAgainButton = new ButtonBuilder()
-        .setCustomId("play_again")
-        .setLabel("🔄 Play Again")
-        .setStyle(ButtonStyle.Success);
-
-      const row = new ActionRowBuilder().addComponents(playAgainButton);
-
-      await interaction.editReply({ embeds: [embed], components: [row] });
-      await updateUserBalance(userId, result.earnings);
-
-      const filter = (i) => i.user.id === userId;
-      const collector = interaction.channel.createMessageComponentCollector({
-        filter,
-        time: 30000,
-      });
-
-      collector.on("collect", async (i) => {
-        if (i.customId === "play_again") {
-          await i.deferUpdate();
-          collector.stop();
-          await module.exports.execute(i);
-        }
-      });
-
-      collector.on("end", async () => {
-        await interaction.editReply({ components: [] });
-      });
-    }
-
     async function dealerTurn() {
-      while (calculateHandValue(dealerHand) < 17) {
+      let dealerTotal = calculateHandValue(dealerHand);
+      while (dealerTotal < 17) {
         dealerHand.push(drawCard(deck));
+        dealerTotal = calculateHandValue(dealerHand);
       }
 
       let playerTotal = calculateHandValue(playerHand);
-      let dealerTotal = calculateHandValue(dealerHand);
+      let result;
+      let color;
+      let earnings = 0;
+      let newStreak = { wins: 0, losses: 0 };
 
       if (dealerTotal > 21 || playerTotal > dealerTotal) {
-        await endGame({ text: "win", color: "Green", earnings: bet });
-      } else if (dealerTotal > playerTotal) {
-        await endGame({ text: "lose", color: "Red", earnings: -bet });
+        result = "won 🎉";
+        color = "Green";
+        earnings = bet;
+        newStreak.wins = (streakData.wins || 0) + 1;
+      } else if (dealerTotal === playerTotal) {
+        result = "pushed 🤝";
+        color = "Gray";
       } else {
-        await endGame({ text: "tie", color: "Yellow", earnings: 0 });
+        result = "lost 💀";
+        color = "Red";
+        earnings = -bet;
+        newStreak.losses = (streakData.losses || 0) + 1;
       }
+
+      await updateUserBalance(userId, earnings);
+      await updateUserStreak(userId, newStreak);
+
+      let embed = new EmbedBuilder()
+        .setTitle("🃏 Blackjack Result")
+        .setDescription(
+          `**Your Hand:** ${formatHand(playerHand)} (${playerTotal})\n` +
+            `**Dealer's Hand:** ${formatHand(
+              dealerHand
+            )} (${dealerTotal})\n\n` +
+            `**You ${result}!**\n` +
+            (earnings !== 0
+              ? `💰 **Earnings:** ${earnings > 0 ? "+" : ""}${earnings} coins\n`
+              : "") +
+            `🔥 **Win Streak:** ${newStreak.wins} | ❄️ **Loss Streak:** ${newStreak.losses}`
+        )
+        .setColor(color);
+
+      await interaction.editReply({ embeds: [embed], components: [] });
     }
+
+    const message = await interaction.reply({
+      content: "🃏 Dealing cards...",
+      ephemeral: false,
+      fetchReply: true,
+    });
+
+    const filter = (i) => i.user.id === userId;
+    const collector = message.createMessageComponentCollector({
+      filter,
+      time: 60000,
+    });
+
+    collector.on("collect", async (i) => {
+      if (i.customId === "hit") {
+        playerHand.push(drawCard(deck));
+        if (calculateHandValue(playerHand) > 21) {
+          collector.stop();
+          return dealerTurn();
+        }
+      } else if (i.customId === "stand") {
+        collector.stop();
+        return dealerTurn();
+      } else if (i.customId === "double") {
+        bet *= 2;
+        playerHand.push(drawCard(deck));
+        collector.stop();
+        return dealerTurn();
+      }
+      await updateGame(i);
+    });
+
+    collector.on("end", async () => {
+      await interaction.editReply({ components: [] });
+    });
 
     async function updateGame(i) {
       let playerTotal = calculateHandValue(playerHand);
-      if (playerTotal > 21) {
-        return endGame({ text: "busted", color: "Red", earnings: -bet });
-      }
+      if (playerTotal > 21) return dealerTurn();
 
       let embed = new EmbedBuilder()
         .setTitle("🃏 Blackjack")
         .setDescription(
           `**Your Hand:** ${formatHand(playerHand)} (${playerTotal})\n` +
-            `**Dealer's Hand:** ${dealerHand[0].rank}${dealerHand[0].suit} ?`
+            `**Dealer's Hand:** ${dealerHand[0].rank}${dealerHand[0].suit} ?\n`
         )
         .setColor("Blue");
 
@@ -171,43 +202,10 @@ module.exports = {
           .setCustomId("double")
           .setLabel("Double Down")
           .setStyle(ButtonStyle.Danger)
-          .setDisabled(bet > balance)
+          .setDisabled(bet > balanceData.balance)
       );
 
       await i.editReply({ embeds: [embed], components: [row] });
     }
-
-    const message = await interaction.reply({
-      content: "🃏 Dealing cards...",
-      ephemeral: false,
-      fetchReply: true,
-    });
-
-    await updateGame(interaction);
-
-    const filter = (i) => i.user.id === userId;
-    const collector = message.createMessageComponentCollector({
-      filter,
-      time: 60000,
-    });
-
-    collector.on("collect", async (i) => {
-      if (i.customId === "hit") {
-        playerHand.push(drawCard(deck));
-      } else if (i.customId === "stand") {
-        collector.stop();
-        return dealerTurn();
-      } else if (i.customId === "double") {
-        bet *= 2;
-        playerHand.push(drawCard(deck));
-        collector.stop();
-        return dealerTurn();
-      }
-      await updateGame(i);
-    });
-
-    collector.on("end", async () => {
-      await interaction.editReply({ components: [] });
-    });
   },
 };

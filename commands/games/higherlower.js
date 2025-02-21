@@ -6,7 +6,7 @@ const {
   ButtonBuilder,
   ButtonStyle,
 } = require("discord.js");
-const { getUserBalance, updateUserBalance } = require("../../utils/database");
+const { getUserBalance, updateUserBalance, markUserActive } = require("../../utils/database");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -35,6 +35,8 @@ module.exports = {
       });
     }
 
+    await markUserActive(userId);
+
     let firstNumber = Math.floor(Math.random() * 100) + 1;
     let currentStreak = 0;
 
@@ -49,10 +51,7 @@ module.exports = {
         .setLabel("⬇️ Lower")
         .setStyle(ButtonStyle.Primary);
 
-      const row = new ActionRowBuilder().addComponents(
-        higherButton,
-        lowerButton
-      );
+      const row = new ActionRowBuilder().addComponents(higherButton, lowerButton);
 
       const embed = new EmbedBuilder()
         .setTitle("🔢 Higher or Lower")
@@ -103,6 +102,8 @@ module.exports = {
         balance += winnings;
         currentStreak = won ? currentStreak + 1 : 0;
 
+        await markUserActive(userId);
+
         const dealerComments = [
           "🎭 That was close!",
           "🤔 Interesting choice...",
@@ -133,13 +134,9 @@ module.exports = {
             },
             { name: "💰 New Balance", value: `${balance} coins`, inline: true }
           )
-          .setColor(
-            won ? "Green" : secondNumber === firstNumber ? "Yellow" : "Red"
-          )
+          .setColor(won ? "Green" : secondNumber === firstNumber ? "Yellow" : "Red")
           .setFooter({
-            text: dealerComments[
-              Math.floor(Math.random() * dealerComments.length)
-            ],
+            text: dealerComments[Math.floor(Math.random() * dealerComments.length)],
           });
 
         const playAgainButton = new ButtonBuilder()
@@ -168,11 +165,10 @@ module.exports = {
           components: won ? [resultRow] : [],
         });
 
-        const newCollector =
-          interaction.channel.createMessageComponentCollector({
-            filter,
-            time: 30000,
-          });
+        const newCollector = interaction.channel.createMessageComponentCollector({
+          filter,
+          time: 30000,
+        });
 
         newCollector.on("collect", async (btnInteraction) => {
           newCollector.stop();

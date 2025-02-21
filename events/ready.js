@@ -1,4 +1,5 @@
 const { REST, Routes } = require("discord.js");
+const { applyInterest } = require("../utils/interest");
 
 module.exports = {
   name: "ready",
@@ -34,5 +35,8 @@ module.exports = {
     } catch (error) {
       console.error("❌ Error registering commands:", error);
     }
+
+    console.log("💰 Starting hourly bank interest system...");
+    setInterval(applyInterest, 60 * 60 * 1000);
   },
 };

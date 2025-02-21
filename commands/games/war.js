@@ -6,7 +6,12 @@ const {
   ActionRowBuilder,
   ButtonStyle,
 } = require("discord.js");
-const { getUserBalance, updateUserBalance } = require("../../utils/database");
+const {
+  getUserBalance,
+  updateUserBalance,
+  getUserStreak,
+  updateUserStreak,
+} = require("../../utils/database");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -52,6 +57,37 @@ async function playWar(interaction, userId, bet) {
 
   await updateUserBalance(userId, winnings);
 
+  const streak = await getUserStreak(userId);
+  const newStreak =
+    result === "win"
+      ? streak >= 0
+        ? streak + 1
+        : 1
+      : result === "lose"
+      ? streak <= 0
+        ? streak - 1
+        : -1
+      : 0;
+  await updateUserStreak(userId, newStreak);
+
+  const tips = {
+    win: [
+      "🔥 Keep up the streak! Maybe raise your bet?",
+      "✅ Winning is great! But don't push your luck too hard!",
+      "💡 If you're on a streak, consider stopping at a set goal.",
+    ],
+    lose: [
+      "❌ Bad luck! Maybe lower your bet to recover?",
+      "📉 Losing streak? Take a break or change your strategy!",
+      "🤔 If you're losing often, think about pacing your bets.",
+    ],
+    tie: [
+      "⚖️ A tie! Consider playing again for a better outcome.",
+      "🤝 A tie means nobody wins. Will you go for another round?",
+      "🔄 No loss, no win. Maybe this is your chance to go big?",
+    ],
+  };
+
   const embed = new EmbedBuilder()
     .setTitle("⚔️ War")
     .setDescription(`You bet **${bet} coins**`)
@@ -66,6 +102,31 @@ async function playWar(interaction, userId, bet) {
             : result === "lose"
             ? "❌ You lost!"
             : "⚖️ It's a tie!",
+        inline: false,
+      },
+      {
+        name: "💰 Payout",
+        value:
+          result === "win"
+            ? `+${winnings} coins`
+            : result === "lose"
+            ? `-${bet} coins`
+            : "0 coins",
+        inline: true,
+      },
+      {
+        name: "🔥 Streak",
+        value:
+          newStreak > 0
+            ? `🔥 **${newStreak}-win streak!**`
+            : newStreak < 0
+            ? `❄️ **${Math.abs(newStreak)}-loss streak!**`
+            : "😐 No streak",
+        inline: true,
+      },
+      {
+        name: "💡 Tip",
+        value: tips[result][Math.floor(Math.random() * tips[result].length)],
         inline: false,
       }
     )

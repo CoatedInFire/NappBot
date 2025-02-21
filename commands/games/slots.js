@@ -85,9 +85,9 @@ module.exports = {
 
     collector.on("collect", async (i) => {
       if (i.customId === "play_again") {
-        await i.deferUpdate(); // Acknowledge button press
+        await i.deferUpdate();
         collector.stop();
-        await module.exports.execute(i); // Restart game with a fresh interaction
+        await module.exports.execute(i);
       }
     });
 

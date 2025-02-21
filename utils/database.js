@@ -84,40 +84,37 @@ async function setUserPreference(userId, preference) {
 
 async function getUserBalance(userId) {
   try {
-    const [rows] = await databasePool.execute(
-      "SELECT balance FROM users WHERE user_id = ?",
+    const [rows] = await database.execute(
+      "SELECT balance, bank_balance FROM users WHERE user_id = ?",
       [userId]
     );
 
     if (rows.length === 0) {
-      await databasePool.execute(
-        "INSERT INTO users (user_id, balance) VALUES (?, ?)",
-        [userId, 5000]
+      await database.execute(
+        "INSERT INTO users (user_id, balance, bank_balance) VALUES (?, ?, ?)",
+        [userId, 5000, 0]
       );
-      return 5000;
+      return { balance: 5000, bank_balance: 0 };
     }
 
-    return rows[0].balance;
+    return rows[0];
   } catch (error) {
-    console.error(
-      `❌ MySQL Error (getUserBalance): ${error.code} - ${error.sqlMessage}`
-    );
+    console.error("❌ MySQL Error (getUserBalance):", error);
     return null;
   }
 }
 
-async function updateUserBalance(userId, amount) {
+async function updateUserBalance(userId, walletChange, bankChange) {
   try {
-    await databasePool.execute(
-      `INSERT INTO users (user_id, balance) VALUES (?, ?) 
-       ON DUPLICATE KEY UPDATE balance = balance + ?;`,
-      [userId, 5000, amount]
+    await database.execute(
+      `UPDATE users 
+       SET balance = balance + ?, bank_balance = bank_balance + ? 
+       WHERE user_id = ?;`,
+      [walletChange, bankChange, userId]
     );
     return true;
   } catch (error) {
-    console.error(
-      `❌ MySQL Error (updateUserBalance): ${error.code} - ${error.sqlMessage}`
-    );
+    console.error("❌ MySQL Error (updateUserBalance):", error);
     return false;
   }
 }
