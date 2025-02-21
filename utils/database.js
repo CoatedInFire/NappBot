@@ -110,6 +110,19 @@ async function getUserBalance(userId) {
 }
 
 async function updateUserBalance(userId, walletChange, bankChange) {
+  if (!userId) {
+    console.error("❌ updateUserBalance Error: userId is undefined or null.");
+    return false;
+  }
+
+  if (walletChange === undefined || bankChange === undefined) {
+    console.error(
+      "❌ updateUserBalance Error: walletChange or bankChange is undefined.",
+      { walletChange, bankChange }
+    );
+    return false;
+  }
+
   try {
     await databasePool.execute(
       `UPDATE users 
@@ -124,9 +137,6 @@ async function updateUserBalance(userId, walletChange, bankChange) {
   }
 }
 
-// =======================
-// STREAK FUNCTIONS
-// =======================
 async function getUserStreak(userId) {
   try {
     const [rows] = await databasePool.execute(
