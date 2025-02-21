@@ -181,6 +181,16 @@ async function getUserLastWork(userId) {
   return result[0]?.last_work || null;
 }
 
+async function markUserActive(userId) {
+  try {
+    await database.execute(
+      "UPDATE users SET active_last = NOW() WHERE user_id = ?",
+      [userId]
+    );
+  } catch (error) {
+    console.error("❌ MySQL Error (markUserActive):", error);
+  }
+}
 
 module.exports = {
   database: databasePool,
@@ -190,4 +200,6 @@ module.exports = {
   updateUserBalance,
   getUserStreak,
   updateStreak,
+  getUserLastWork,
+  markUserActive,
 };
