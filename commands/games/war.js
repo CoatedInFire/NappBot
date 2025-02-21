@@ -2,9 +2,10 @@ const path = require("path");
 const {
   SlashCommandBuilder,
   EmbedBuilder,
-  ButtonBuilder,
   ActionRowBuilder,
+  ButtonBuilder,
   ButtonStyle,
+  InteractionFlags,
 } = require("discord.js");
 const {
   getUserBalance,
@@ -33,10 +34,10 @@ module.exports = {
     const bet = interaction.options.getInteger("bet");
 
     const balance = await getUserBalance(userId);
-    if (bet <= 0 || bet > balance) {
+    if (!balance || bet <= 0 || bet > balance.balance) {
       return interaction.reply({
-        content: "❌ Invalid bet amount!",
-        ephemeral: true,
+        content: "❌ Invalid bet amount or insufficient balance!",
+        flags: InteractionFlags.EPHEMERAL,
       });
     }
 
@@ -65,17 +66,17 @@ async function playWar(interaction, userId, bet) {
   if (result === "win") winnings = bet;
   if (result === "lose") winnings = -bet;
 
-  if (result !== "tie") await updateUserBalance(userId, winnings);
+  if (result !== "tie") await updateUserBalance(userId, winnings, 0);
 
   const streak = await getUserStreak(userId);
-  let newStreak = streak;
+  let newStreak = streak ? streak : 0;
 
   switch (result) {
     case "win":
-      newStreak = streak >= 0 ? streak + 1 : 1;
+      newStreak = newStreak >= 0 ? newStreak + 1 : 1;
       break;
     case "lose":
-      newStreak = streak <= 0 ? streak - 1 : -1;
+      newStreak = newStreak <= 0 ? newStreak - 1 : -1;
       break;
     case "tie":
       break;
@@ -165,25 +166,25 @@ async function playWar(interaction, userId, bet) {
   const message = await interaction.reply({
     embeds: [embed],
     components: [row],
-    ephemeral: false,
+    fetchReply: true,
   });
 
-
-  const filter = (i) => i.user.id === userId;
+  const filter = (i) =>
+    i.user.id === userId && i.customId === `play_again_${userId}`;
   const collector = message.createMessageComponentCollector({
     filter,
     time: 30000,
   });
 
   collector.on("collect", async (i) => {
-    if (i.customId === `play_again_${userId}`) {
-      collector.stop();
-      await i.update({ content: "🔄 Restarting game...", components: [] });
+    await i.deferUpdate();
+    collector.stop();
 
-      setTimeout(async () => {
-        await playWar(interaction, userId, bet);
-      }, 1000);
-    }
+    await i.editReply({ content: "🔄 Restarting game...", components: [] });
+
+    setTimeout(async () => {
+      await playWar(interaction, userId, bet);
+    }, 1000);
   });
 
   collector.on("end", async () => {

@@ -5,6 +5,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  InteractionFlags,
 } = require("discord.js");
 const {
   getUserBalance,
@@ -32,10 +33,10 @@ module.exports = {
     const bet = interaction.options.getInteger("bet");
     let balance = await getUserBalance(userId);
 
-    if (bet <= 0 || bet > balance) {
+    if (!balance || bet <= 0 || bet > balance.balance) {
       return interaction.reply({
-        content: "❌ Invalid bet amount!",
-        ephemeral: true,
+        content: "❌ Invalid bet amount or insufficient balance!",
+        flags: InteractionFlags.EPHEMERAL,
       });
     }
 
@@ -72,15 +73,20 @@ module.exports = {
           inline: true,
         });
 
-      await interaction.reply({ embeds: [embed], components: [row] });
+      const message = await interaction.reply({
+        embeds: [embed],
+        components: [row],
+        fetchReply: true,
+      });
 
       const filter = (i) => i.user.id === interaction.user.id;
-      const collector = interaction.channel.createMessageComponentCollector({
+      const collector = message.createMessageComponentCollector({
         filter,
         time: 30000,
       });
 
       collector.on("collect", async (i) => {
+        await i.deferUpdate();
         collector.stop();
 
         let secondNumber = Math.floor(Math.random() * 100) + 1;
@@ -105,7 +111,7 @@ module.exports = {
         }
 
         const winnings = won ? bet : -bet;
-        await updateUserBalance(userId, winnings);
+        await updateUserBalance(userId, winnings, 0);
         balance += winnings;
         currentStreak = won ? currentStreak + 1 : 0;
 
@@ -139,7 +145,11 @@ module.exports = {
                 : "❌ You lost!",
               inline: false,
             },
-            { name: "💰 New Balance", value: `${balance} coins`, inline: true }
+            {
+              name: "💰 New Balance",
+              value: `${balance.balance} coins`,
+              inline: true,
+            }
           )
           .setColor(
             won ? "Green" : secondNumber === firstNumber ? "Yellow" : "Red"
@@ -176,14 +186,15 @@ module.exports = {
           components: won ? [resultRow] : [],
         });
 
-        const newCollector =
-          interaction.channel.createMessageComponentCollector({
-            filter,
-            time: 30000,
-          });
+        const newCollector = message.createMessageComponentCollector({
+          filter,
+          time: 30000,
+        });
 
         newCollector.on("collect", async (btnInteraction) => {
+          await btnInteraction.deferUpdate();
           newCollector.stop();
+
           if (btnInteraction.customId === "play_again") {
             await btnInteraction.update({
               content: "🔄 Restarting game...",
@@ -196,10 +207,10 @@ module.exports = {
               currentStreak
             );
           } else if (btnInteraction.customId === "double") {
-            if (balance < bet * 2) {
+            if (balance.balance < bet * 2) {
               return btnInteraction.reply({
                 content: "❌ You don't have enough coins to double your bet!",
-                ephemeral: true,
+                flags: InteractionFlags.EPHEMERAL,
               });
             }
             playGame(btnInteraction, secondNumber, bet * 2, currentStreak);

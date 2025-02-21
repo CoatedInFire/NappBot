@@ -5,6 +5,7 @@ const {
   ButtonBuilder,
   ActionRowBuilder,
   ButtonStyle,
+  InteractionFlags,
 } = require("discord.js");
 const {
   getUserBalance,
@@ -34,10 +35,10 @@ module.exports = {
     const bet = interaction.options.getInteger("bet");
     const balance = await getUserBalance(userId);
 
-    if (bet > balance) {
+    if (bet > balance.balance) {
       return interaction.reply({
         content: "❌ You don't have enough coins!",
-        ephemeral: true,
+        flags: InteractionFlags.EPHEMERAL,
       });
     }
 
@@ -53,7 +54,7 @@ module.exports = {
     const jackpot = win && row2[0] === "💎";
 
     let winnings = win ? (jackpot ? bet * 10 : bet * 3) : -bet;
-    await updateUserBalance(userId, winnings);
+    await updateUserBalance(userId, winnings, 0);
 
     const streak = await getUserStreak(userId);
     const newStreak = win
@@ -69,10 +70,10 @@ module.exports = {
       .setTitle("🎰 Slot Machine Results")
       .setDescription(
         `
-        ${row1.join(" ")}
-        ${row2.join(" ")}  ⬅️
-        ${row3.join(" ")}
-      `
+                ${row1.join(" ")}
+                ${row2.join(" ")}  ⬅️
+                ${row3.join(" ")}
+            `
       )
       .setColor(win ? "Green" : "Red")
       .addFields(
@@ -111,7 +112,7 @@ module.exports = {
     const message = await interaction.reply({
       embeds: [embed],
       components: [row],
-      ephemeral: false,
+      fetchReply: true,
     });
 
     const filter = (i) => i.user.id === userId && i.customId === "play_again";

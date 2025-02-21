@@ -5,6 +5,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  InteractionFlags,
 } = require("discord.js");
 const {
   getUserBalance,
@@ -94,17 +95,17 @@ module.exports = {
     const chosenNumber = interaction.options.getInteger("number");
 
     const balance = await getUserBalance(userId);
-    if (betAmount <= 0 || betAmount > balance) {
+    if (!balance || betAmount <= 0 || betAmount > balance.balance) {
       return interaction.reply({
-        content: "❌ Invalid bet amount!",
-        ephemeral: true,
+        content: "❌ Invalid bet amount or insufficient balance!",
+        flags: InteractionFlags.EPHEMERAL,
       });
     }
 
     if (betType === "number" && chosenNumber === null) {
       return interaction.reply({
         content: "❌ You must pick a valid number between 0 and 36!",
-        ephemeral: true,
+        flags: InteractionFlags.EPHEMERAL,
       });
     }
 
@@ -155,7 +156,7 @@ module.exports = {
         break;
     }
 
-    await updateUserBalance(userId, won ? winnings : -betAmount);
+    await updateUserBalance(userId, won ? winnings : -betAmount, 0);
 
     const streak = await getUserStreak(userId);
     const newStreak = won
@@ -211,20 +212,22 @@ module.exports = {
     const message = await interaction.reply({
       embeds: [embed],
       components: [row],
+      fetchReply: true,
     });
 
     const collector = message.createMessageComponentCollector({
-      filter: (i) => i.user.id === userId,
+      filter: (i) => i.user.id === userId && i.customId === "play_again",
       time: 30000,
     });
 
     collector.on("collect", async (i) => {
+      await i.deferUpdate();
       collector.stop();
       await this.execute(i);
     });
 
     collector.on("end", async () => {
-      await message.edit({ components: [] });
+      await interaction.editReply({ components: [] });
     });
   },
 };

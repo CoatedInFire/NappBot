@@ -2,7 +2,9 @@ const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const {
   getUserBalance,
   updateUserBalance,
-  database,
+  getUserLastWork,
+  updateUserLastWork,
+  databasePool,
 } = require("../../utils/database");
 
 module.exports = {
@@ -12,11 +14,6 @@ module.exports = {
 
   async execute(interaction) {
     const userId = interaction.user.id;
-
-    const cooldownResult = await database.execute(
-      "SELECT last_work FROM users WHERE user_id = ?",
-      [userId]
-    );
 
     const lastWorkTime = await getUserLastWork(userId);
     const cooldown = 10 * 60 * 1000;
@@ -35,9 +32,9 @@ module.exports = {
     await updateUserLastWork(userId);
 
     const earnings = Math.floor(Math.random() * (10000 - 2000 + 1)) + 2000;
-    await updateUserBalance(userId, earnings);
+    await updateUserBalance(userId, earnings, 0);
 
-    await database.execute(
+    await databasePool.execute(
       "UPDATE users SET last_work = NOW() WHERE user_id = ?",
       [userId]
     );

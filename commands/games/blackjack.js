@@ -5,6 +5,7 @@ const {
   ButtonBuilder,
   ActionRowBuilder,
   ButtonStyle,
+  InteractionFlags,
 } = require("discord.js");
 const {
   getUserBalance,
@@ -40,7 +41,7 @@ module.exports = {
     if (!balanceData || bet > balanceData.balance) {
       return interaction.reply({
         content: "❌ You don't have enough coins!",
-        ephemeral: true,
+        flags: InteractionFlags.EPHEMERAL,
       });
     }
 
@@ -155,12 +156,17 @@ module.exports = {
       await interaction.editReply({ embeds: [embed], components: [row] });
     }
 
+    let initialEmbed = new EmbedBuilder()
+      .setTitle("🃏 Blackjack")
+      .setDescription("🃏 Dealing cards...");
+
     const message = await interaction.reply({
-      content: "🃏 Dealing cards...",
+      embeds: [initialEmbed],
+      components: [],
       fetchReply: true,
     });
 
-    async function updateGame(i) {
+    async function updateGame(interactionToUpdate) {
       let playerTotal = calculateHandValue(playerHand);
       if (playerTotal > 21) return dealerTurn();
 
@@ -188,7 +194,7 @@ module.exports = {
           .setDisabled(bet * 2 > balanceData.balance)
       );
 
-      await i.update({ embeds: [embed], components: [row] });
+      await interactionToUpdate.update({ embeds: [embed], components: [row] });
     }
 
     const filter = (i) => i.user.id === userId;
@@ -215,7 +221,7 @@ module.exports = {
         collector.stop();
         await dealerTurn();
       } else if (i.customId === "play_again") {
-        await execute(interaction);
+        await execute(i);
       }
     });
 

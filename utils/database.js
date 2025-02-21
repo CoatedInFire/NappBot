@@ -81,6 +81,30 @@ async function setUserPreference(userId, preference) {
   }
 }
 
+async function getUserLastWork(userId) {
+  try {
+    const [rows] = await databasePool.execute(
+      "SELECT last_work FROM users WHERE user_id = ?",
+      [userId]
+    );
+    return rows.length > 0 ? rows[0].last_work : null;
+  } catch (error) {
+    console.error("❌ MySQL Error (getUserLastWork):", error);
+    return null;
+  }
+}
+
+async function updateUserLastWork(userId) {
+  try {
+      await databasePool.execute(
+          "UPDATE users SET last_work = NOW() WHERE user_id = ?",
+          [userId]
+      );
+  } catch (error) {
+      console.error("❌ MySQL Error (updateUserLastWork):", error);
+  }
+}
+
 async function getUserBalance(userId) {
   try {
     const [rows] = await databasePool.execute(
@@ -173,13 +197,6 @@ async function updateStreak(userId, result) {
   }
 }
 
-async function getUserLastWork(userId) {
-  const result = await database.execute(
-    "SELECT last_work FROM users WHERE user_id = ?",
-    [userId]
-  );
-  return result[0]?.last_work || null;
-}
 
 async function markUserActive(userId) {
   try {
@@ -193,7 +210,7 @@ async function markUserActive(userId) {
 }
 
 module.exports = {
-  database: databasePool,
+  databasePool: databasePool,
   getUserPreference,
   setUserPreference,
   getUserBalance,
@@ -201,5 +218,6 @@ module.exports = {
   getUserStreak,
   updateStreak,
   getUserLastWork,
+  updateUserLastWork,
   markUserActive,
 };
