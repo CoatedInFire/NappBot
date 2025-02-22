@@ -5,33 +5,15 @@ const {
   ButtonBuilder,
   ActionRowBuilder,
   ButtonStyle,
-  InteractionFlags,
 } = require("discord.js");
 const {
   getUserBalance,
   updateUserBalance,
   getUserStreak,
-  updateUserStreak,
+  updateStreak,
 } = require("../../utils/database");
-const { evaluateHand, determineWinner } = require("../../utils/pokerUtils");
-
-const POKER_STARTING_BLIND = 100;
-const AI_NAMES = ["Omni", "Kaden", "Dusty", "Crayon"];
-const HAND_RANKINGS = [
-  "High Card",
-  "One Pair",
-  "Two Pair",
-  "Three of a Kind",
-  "Straight",
-  "Flush",
-  "Full House",
-  "Four of a Kind",
-  "Straight Flush",
-  "Royal Flush",
-];
-
-const AI_PLAYSTYLES = ["Aggressive", "Cautious", "Balanced"];
-const GAME_STAGES = ["Pre-Flop", "Flop", "Turn", "River"];
+const PokerGame = require("../../utils/pokerGame");
+const { getHandStrengthTip } = require("../../utils/pokerUtils");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -39,8 +21,8 @@ module.exports = {
     .setDescription("♠️ Start a game of Texas Hold'em Poker.")
     .addIntegerOption((option) =>
       option
-        .setName("buy_in")
-        .setDescription("Amount of money to convert into poker chips")
+        .setName("bet")
+        .setDescription("Amount of money to bet")
         .setMinValue(100)
         .setRequired(true)
     )
@@ -56,350 +38,135 @@ module.exports = {
   modulePath: path.resolve(__filename),
 
   async execute(interaction) {
-    await interaction.deferReply({ flags: InteractionFlags.EPHEMERAL });
+    await interaction.deferReply();
 
     const userId = interaction.user.id;
-    const buyIn = interaction.options.getInteger("buy_in");
+    const betAmount = interaction.options.getInteger("bet");
     const aiCount = interaction.options.getInteger("players") || 0;
     const userBalance = await getUserBalance(userId);
+    const userStreak = await getUserStreak(userId);
 
-    if (!userBalance || userBalance.balance < buyIn) {
-      return interaction.editReply("❌ You don't have enough money to buy in!");
+    if (userBalance.balance < betAmount) {
+      return interaction.editReply("❌ You don't have enough money to bet!");
     }
 
-    await updateUserBalance(userId, -buyIn, 0);
+    await updateUserBalance(userId, -betAmount, 0);
 
-    let players = [
-      {
-        id: userId,
-        name: interaction.user.username,
-        chips: buyIn,
-        hand: [],
-        folded: false,
-        playstyle: "Human",
-      },
+    const players = [
+      { id: userId, name: interaction.user.username, balance: betAmount },
     ];
-
     for (let i = 0; i < aiCount; i++) {
-      players.push({
-        id: `AI_${i}`,
-        name: AI_NAMES[i],
-        chips: buyIn,
-        hand: [],
-        folded: false,
-        playstyle:
-          AI_PLAYSTYLES[Math.floor(Math.random() * AI_PLAYSTYLES.length)],
-      });
+      players.push(`AI_${i}`);
     }
 
-    let pot = 0;
-    let currentBet = POKER_STARTING_BLIND;
-    let communityCards = [];
-    let gameStage = 0;
+    const game = new PokerGame(players, betAmount);
 
-    function drawCard() {
-      const suits = ["♠", "♥", "♦", "♣"];
-      const values = [
-        "2",
-        "3",
-        "4",
-        "5",
-        "6",
-        "7",
-        "8",
-        "9",
-        "10",
-        "J",
-        "Q",
-        "K",
-        "A",
-      ];
-      return {
-        suit: suits[Math.floor(Math.random() * 4)],
-        value: values[Math.floor(Math.random() * 13)],
-      };
+    await interaction.followUp(
+      `🔥 **Current Streak:** ${userStreak} Wins in a Row!`
+    );
+
+    let gameState = await playPokerRound(interaction, game, userId);
+    if (gameState === "completed") {
+      await interaction.followUp("🎉 Game Over! Thanks for playing.");
     }
-
-    function dealCards() {
-      players.forEach((player) => {
-        player.hand = [drawCard(), drawCard()];
-      });
-    }
-
-    function evaluateHand(hand) {
-      return HAND_RANKINGS[Math.floor(Math.random() * HAND_RANKINGS.length)];
-    }
-
-    function placeBet(player, amount) {
-      const betAmount = Math.min(player.chips, amount);
-      player.chips -= betAmount;
-      pot += betAmount;
-      return betAmount;
-    }
-
-    async function bettingRound() {
-      for (let player of players) {
-        if (player.folded) continue;
-
-        if (player.playstyle === "Human") {
-          const handEmbed = new EmbedBuilder()
-            .setTitle("Your Hand")
-            .setDescription(
-              player.hand.map((card) => `${card.value}${card.suit}`).join(" ")
-            );
-
-          await interaction.followUp({
-            embeds: [handEmbed],
-            flags: InteractionFlags.EPHEMERAL,
-          });
-
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-              .setCustomId("call")
-              .setLabel("Call")
-              .setStyle(ButtonStyle.Success),
-            new ButtonBuilder()
-              .setCustomId("raise")
-              .setLabel("Raise")
-              .setStyle(ButtonStyle.Primary),
-            new ButtonBuilder()
-              .setCustomId("fold")
-              .setLabel("Fold")
-              .setStyle(ButtonStyle.Danger)
-          );
-
-          await interaction.editReply({
-            content: `${player.name}, it's your turn! Choose an action:`,
-            components: [row],
-            fetchReply: true,
-          });
-
-          const filter = (i) => i.user.id === userId;
-          const collected = await interaction.channel.awaitMessageComponent({
-            filter,
-            time: 30000,
-          });
-
-          if (collected) {
-            if (collected.customId === "call") {
-              placeBet(player, currentBet);
-            } else if (collected.customId === "raise") {
-              placeBet(player, currentBet * 2);
-              currentBet *= 2;
-            } else if (collected.customId === "fold") {
-              player.folded = true;
-            }
-
-            await collected.update({
-              content: `${
-                player.name
-              } chose ${collected.customId.toUpperCase()}`,
-              components: [],
-            });
-          } else {
-            await interaction.editReply({
-              content: `${player.name} ran out of time!`,
-              components: [],
-            });
-            player.folded = true;
-          }
-        } else {
-          if (player.playstyle === "Aggressive") {
-            placeBet(player, currentBet * 2);
-          } else if (player.playstyle === "Cautious") {
-            if (Math.random() < 0.5) player.folded = true;
-            else placeBet(player, currentBet);
-          } else {
-            placeBet(player, currentBet);
-          }
-        }
-      }
-    }
-
-    async function nextStage() {
-      if (gameStage < 3) {
-        if (gameStage === 0) {
-          communityCards.push(drawCard(), drawCard(), drawCard());
-        } else {
-          communityCards.push(drawCard());
-        }
-        gameStage++;
-        currentBet = POKER_STARTING_BLIND;
-        players.forEach((p) => (p.currentBet = 0));
-
-        const communityEmbed = new EmbedBuilder()
-          .setTitle(`Community Cards - ${GAME_STAGES[gameStage]}`)
-          .setDescription(
-            communityCards.map((card) => `${card.value}${card.suit}`).join(" ")
-          );
-        await interaction.followUp({ embeds: [communityEmbed] });
-
-        await bettingRound();
-      } else {
-        const { winner, evaluatedHands } = determineWinner(
-          players,
-          communityCards
-        ); // Call determineWinner
-
-        if (winner) {
-          winner.chips += pot;
-          if (winner.id === interaction.user.id) {
-            await updateUserBalance(userId, pot, 0);
-            await updateUserStreak(userId, "win");
-          } else {
-            await updateUserStreak(userId, "loss");
-          }
-
-          const embed = new EmbedBuilder()
-            .setTitle("♠️ Poker Game Over")
-            .setDescription(
-              `🏆 Winner: **${winner.name}** with **${
-                winner.handRanking || "Unknown"
-              }**!`
-            ) // Use winner.handRanking or a default
-            .addFields(
-              { name: "💰 Pot", value: `${pot} Chips`, inline: true },
-              {
-                name: "Player Chips",
-                value: players.map((p) => `${p.name}: ${p.chips}`).join("\n"),
-                inline: true,
-              },
-              {
-                name: "Community Cards",
-                value: communityCards
-                  .map((c) => `${c.value}${c.suit}`)
-                  .join(" "),
-                inline: true,
-              },
-              {
-                name: "Hands Played",
-                value: evaluatedHands
-                  .map((h) => `${h.player}: ${h.hand} (${h.ranking})`)
-                  .join("\n"),
-              }
-            )
-            .setColor("Gold");
-
-          await interaction.editReply({ embeds: [embed] });
-        } else {
-          const embed = new EmbedBuilder()
-            .setTitle("♠️ Poker Game Over")
-            .setDescription("No winner. All players folded or it's a tie.")
-            .addFields(
-              { name: "💰 Pot", value: `${pot} Chips`, inline: true },
-              {
-                name: "Player Chips",
-                value: players.map((p) => `${p.name}: ${p.chips}`).join("\n"),
-                inline: true,
-              },
-              {
-                name: "Community Cards",
-                value: communityCards
-                  .map((c) => `${c.value}${c.suit}`)
-                  .join(" "),
-                inline: true,
-              },
-              {
-                name: "Hands Played",
-                value: evaluatedHands
-                  .map((h) => `${h.player}: ${h.hand} (${h.ranking})`)
-                  .join("\n"),
-              }
-            )
-            .setColor("Gold");
-          await interaction.editReply({ embeds: [embed] });
-        }
-      }
-    }
-
-    async function determineWinner() {
-      let bestHand = null;
-      let winner = null;
-      const evaluatedHands = [];
-
-      for (const player of players) {
-        if (!player.folded) {
-          const hand = [...player.hand, ...communityCards];
-          const handRank = evaluateHand(hand);
-          evaluatedHands.push({
-            player: player.name,
-            hand: hand.map((c) => `${c.value}${c.suit}`).join(" "),
-            ranking: handRank,
-          });
-
-          if (
-            !bestHand ||
-            HAND_RANKINGS.indexOf(handRank) > HAND_RANKINGS.indexOf(bestHand)
-          ) {
-            bestHand = handRank;
-            winner = player;
-          }
-        }
-      }
-
-      if (winner) {
-        winner.chips += pot;
-        if (winner.id === interaction.user.id) {
-          await updateUserBalance(userId, pot, 0);
-          await updateUserStreak(userId, "win");
-        } else {
-          await updateUserStreak(userId, "loss");
-        }
-
-        const embed = new EmbedBuilder()
-          .setTitle("♠️ Poker Game Over")
-          .setDescription(`🏆 Winner: **${winner.name}** with **${bestHand}**!`)
-          .addFields(
-            { name: "💰 Pot", value: `${pot} Chips`, inline: true },
-            {
-              name: "Player Chips",
-              value: players.map((p) => `${p.name}: ${p.chips}`).join("\n"),
-              inline: true,
-            },
-            {
-              name: "Community Cards",
-              value: communityCards.map((c) => `${c.value}${c.suit}`).join(" "),
-              inline: true,
-            },
-            {
-              name: "Hands Played",
-              value: evaluatedHands
-                .map((h) => `${h.player}: ${h.hand} (${h.ranking})`)
-                .join("\n"),
-            }
-          )
-          .setColor("Gold");
-
-        await interaction.editReply({ embeds: [embed] });
-      } else {
-        const embed = new EmbedBuilder()
-          .setTitle("♠️ Poker Game Over")
-          .setDescription("No winner. All players folded or it's a tie.")
-          .addFields(
-            { name: "💰 Pot", value: `${pot} Chips`, inline: true },
-            {
-              name: "Player Chips",
-              value: players.map((p) => `${p.name}: ${p.chips}`).join("\n"),
-              inline: true,
-            },
-            {
-              name: "Community Cards",
-              value: communityCards.map((c) => `${c.value}${c.suit}`).join(" "),
-              inline: true,
-            },
-            {
-              name: "Hands Played",
-              value: evaluatedHands
-                .map((h) => `${h.player}: ${h.hand} (${h.ranking})`)
-                .join("\n"),
-            }
-          )
-          .setColor("Gold");
-        await interaction.editReply({ embeds: [embed] });
-      }
-    }
-
-    dealCards();
-    await nextStage();
   },
 };
+
+async function playPokerRound(interaction, game, userId) {
+  while (game.round !== "showdown") {
+    await interaction.editReply({
+      embeds: [
+        new EmbedBuilder()
+          .setTitle(`🃏 **${game.round.toUpperCase()} Stage**`)
+          .setDescription(`💰 **Pot:** ${game.pot}`)
+          .setColor("#ffcc00"),
+      ],
+    });
+
+    let result = await game.nextTurn();
+    if (result?.actionRequired) {
+      await handleUserTurn(interaction, result.player, game);
+    }
+  }
+
+  const winner = game.showdown();
+  await updateUserBalance(winner.id, game.pot, 0);
+
+  let tip = getHandStrengthTip(winner.bestHand);
+  let embed = new EmbedBuilder()
+    .setTitle("🏆 **Poker Game Over!**")
+    .setDescription(`🎉 **Winner:** ${winner.name}`)
+    .addFields(
+      { name: "🃏 Best Hand", value: winner.bestHand },
+      { name: "💰 Winnings", value: `${game.pot}` },
+      { name: "📌 Strategy Tip", value: tip }
+    )
+    .setColor(winner.id === userId ? "#00ff00" : "#ff0000");
+
+  await interaction.followUp({ embeds: [embed], components: [playAgainRow()] });
+
+  if (winner.id === userId) {
+    await updateStreak(userId, "win");
+  } else {
+    await updateStreak(userId, "loss");
+  }
+
+  return "completed";
+}
+
+async function handleUserTurn(interaction, player, game) {
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("check")
+      .setLabel("Check")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(game.currentBet > 0),
+    new ButtonBuilder()
+      .setCustomId("call")
+      .setLabel(`Call (${game.currentBet})`)
+      .setStyle(ButtonStyle.Success)
+      .setDisabled(player.balance < game.currentBet),
+    new ButtonBuilder()
+      .setCustomId("raise")
+      .setLabel("Raise")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId("fold")
+      .setLabel("Fold")
+      .setStyle(ButtonStyle.Danger)
+  );
+
+  await interaction.followUp({
+    content: `${player.name}, it's your turn! Choose an action:`,
+    components: [row],
+  });
+
+  const filter = (i) => i.user.id === player.id;
+  try {
+    const collected = await interaction.channel.awaitMessageComponent({
+      filter,
+      time: 30000,
+    });
+
+    game.handleAction(player, {
+      action: collected.customId,
+      amount: game.currentBet * 2,
+    });
+
+    await collected.update({
+      content: `${player.name} chose **${collected.customId.toUpperCase()}**`,
+      components: [],
+    });
+  } catch {
+    game.handleAction(player, { action: "fold" });
+  }
+}
+
+function playAgainRow() {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("play_again")
+      .setLabel("🔄 Play Again")
+      .setStyle(ButtonStyle.Primary)
+  );
+}
