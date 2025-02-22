@@ -130,14 +130,18 @@ module.exports = {
         let embed = new EmbedBuilder()
           .setTitle("🃏 Blackjack Result")
           .setDescription(
-            `**Dealer's Hand:** ${formatHand(dealerHand)} (${dealerTotal})\n\n` +
-            `**Your Hand:** ${formatHand(playerHand)} (${playerTotal})\n\n` +
-            `**You ${result}!**\n` +
-            (earnings !== 0
-              ? `💰 **Earnings:** ${earnings > 0 ? "+" : ""}${earnings} coins\n`
-              : "") +
-            `🔥 **Streak:** ${await getUserStreak(userId)}\n\n` +
-            `**Tip:** ${handStrengthTip}`
+            `**Dealer's Hand:** ${formatHand(
+              dealerHand
+            )} (${dealerTotal})\n\n` +
+              `**Your Hand:** ${formatHand(playerHand)} (${playerTotal})\n\n` +
+              `**You ${result}!**\n` +
+              (earnings !== 0
+                ? `💰 **Earnings:** ${
+                    earnings > 0 ? "+" : ""
+                  }${earnings} coins\n`
+                : "") +
+              `🔥 **Streak:** ${await getUserStreak(userId)}\n\n` +
+              `**Tip:** ${handStrengthTip}`
           )
           .setColor(color);
 
@@ -169,11 +173,12 @@ module.exports = {
         .setTitle("🃏 Blackjack")
         .setDescription("🃏 Dealing cards...");
 
-      const message = await interaction.reply({
+      await interaction.reply({
         embeds: [initialEmbed],
         components: [],
-        fetchReply: true,
       });
+
+      const message = await interaction.fetchReply();
 
       async function updateGame(interactionToUpdate) {
         let playerTotal = calculateHandValue(playerHand);
