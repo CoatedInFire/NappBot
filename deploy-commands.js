@@ -11,6 +11,9 @@ if (!clientId || !token) {
   process.exit(1);
 }
 
+console.log(`🔑 CLIENT_ID: ${clientId}`);
+console.log(`🔑 TOKEN: ${token ? 'Provided' : 'Not Provided'}`);
+
 function getCommandFiles(dir) {
   let files = [];
   fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
@@ -25,6 +28,8 @@ function getCommandFiles(dir) {
 }
 
 const commandFiles = getCommandFiles(path.join(__dirname, "commands"));
+
+console.log(`📂 Found ${commandFiles.length} command files.`);
 
 const allCommands = [];
 
