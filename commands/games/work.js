@@ -5,7 +5,6 @@ const {
   updateUserBalance,
   getUserLastWork,
   updateUserLastWork,
-  databasePool,
 } = require("../../utils/database");
 
 module.exports = {
@@ -19,7 +18,6 @@ module.exports = {
     console.log(`⚡ Executing /work from: ${module.exports.modulePath}`);
 
     const userId = interaction.user.id;
-
     const lastWorkTime = await getUserLastWork(userId);
     const cooldown = 10 * 60 * 1000;
     const now = Date.now();
@@ -37,12 +35,9 @@ module.exports = {
     await updateUserLastWork(userId);
 
     const earnings = Math.floor(Math.random() * (10000 - 2000 + 1)) + 2000;
-    await updateUserBalance(userId, earnings, 0);
+    await updateUserBalance(userId, earnings);
 
-    await databasePool.execute(
-      "UPDATE users SET last_work = NOW() WHERE user_id = ?",
-      [userId]
-    );
+    const updatedBalance = await getUserBalance(userId);
 
     const workMessages = [
       `👷 You worked as a **construction worker** and earned **🪙 ${earnings} coins**!`,
@@ -60,8 +55,10 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setTitle("💼 Work Complete!")
-      .setDescription(message)
-      .setColor("#00FF00");
+      .setDescription(
+        `${message}\n\n**New Balance:** 🪙 ${updatedBalance} coins`
+      )
+      .setColor("Green");
 
     await interaction.reply({ embeds: [embed] });
   },

@@ -11,8 +11,7 @@ const {
   getUserBalance,
   updateUserBalance,
   getUserStreak,
-  updateWinStreak,
-  updateLossStreak,
+  updateStreak,
 } = require("../../utils/database");
 
 module.exports = {
@@ -36,7 +35,7 @@ module.exports = {
     const bet = interaction.options.getInteger("bet");
     const balance = await getUserBalance(userId);
 
-    if (bet > balance.balance) {
+    if (!balance || bet > balance.balance) {
       return interaction.reply({
         content: "❌ You don't have enough coins!",
         flags: InteractionFlags.EPHEMERAL,
@@ -57,7 +56,7 @@ module.exports = {
     let winnings = win ? (jackpot ? bet * 10 : bet * 3) : -bet;
     await updateUserBalance(userId, winnings, 0);
 
-    const streak = await getUserStreak(userId);
+    const streak = (await getUserStreak(userId)) || 0;
     const newStreak = win
       ? streak >= 0
         ? streak + 1
@@ -66,25 +65,16 @@ module.exports = {
       ? streak - 1
       : -1;
 
-    if (newStreak > 0) {
-      await updateWinStreak(userId, newStreak);
-      await updateLossStreak(userId, 0);
-    } else if (newStreak < 0) {
-      await updateLossStreak(userId, Math.abs(newStreak));
-      await updateWinStreak(userId, 0);
-    } else {
-      await updateWinStreak(userId, 0);
-      await updateLossStreak(userId, 0);
-    }
+    await updateStreak(userId, win ? "win" : "loss");
 
     const embed = new EmbedBuilder()
       .setTitle("🎰 Slot Machine Results")
       .setDescription(
         `
-                ${row1.join(" ")}
-                ${row2.join(" ")}  ⬅️
-                ${row3.join(" ")}
-            `
+        ${row1.join(" ")}
+        ${row2.join(" ")}  ⬅️
+        ${row3.join(" ")}
+        `
       )
       .setColor(win ? "Green" : "Red")
       .addFields(

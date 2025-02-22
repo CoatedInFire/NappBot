@@ -207,8 +207,8 @@ module.exports = {
       }
     }
 
-    const filter = (i) => i.user.id === userId;
-    const collector = message.createMessageComponentCollector({
+    const filter = (i) => i.isButton() && i.user.id === userId;
+    const collector = interaction.channel.createMessageComponentCollector({
       filter,
       time: 60000,
     });
