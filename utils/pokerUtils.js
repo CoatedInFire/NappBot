@@ -1,5 +1,18 @@
 const handEvaluator = require("poker-hand-evaluator");
 
+const HAND_RANKINGS = [
+  "High Card",
+  "One Pair",
+  "Two Pair",
+  "Three of a Kind",
+  "Straight",
+  "Flush",
+  "Full House",
+  "Four of a Kind",
+  "Straight Flush",
+  "Royal Flush",
+];
+
 function evaluateHand(hand) {
   const formattedHand = hand.map((card) => card.value + card.suit);
   const evaluation = handEvaluator.evalHand(formattedHand);

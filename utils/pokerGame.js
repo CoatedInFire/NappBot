@@ -134,7 +134,7 @@ class PokerGame {
         const fullHand = [...player.hand, ...this.communityCards];
         const handRank = evaluateHand(fullHand);
 
-        if (!bestHand || handRank > bestHand) {
+        if (!bestHand || HAND_RANKINGS.indexOf(handRank) > HAND_RANKINGS.indexOf(bestHand)) {
           bestHand = handRank;
           winner = player;
         }
@@ -144,6 +144,7 @@ class PokerGame {
     console.log(`Winner: ${winner.name} with a ${bestHand}`);
     winner.chips += this.pot;
     this.resetGame();
+    return { id: winner.id, name: winner.name, bestHand };
   }
 
   resetGame() {

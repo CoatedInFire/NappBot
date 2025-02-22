@@ -97,19 +97,19 @@ async function playPokerRound(interaction, game, userId) {
     }
   }
 
-  const winner = game.showdown();
-  await updateUserBalance(winner.id, game.pot, 0);
+  const { id, name, bestHand } = game.showdown();
+  await updateUserBalance(id, game.pot, 0);
 
-  let tip = getHandStrengthTip(winner.bestHand);
+  let tip = getHandStrengthTip(bestHand);
   let embed = new EmbedBuilder()
     .setTitle("🏆 **Poker Game Over!**")
-    .setDescription(`🎉 **Winner:** ${winner.name}`)
+    .setDescription(`🎉 **Winner:** ${name}`)
     .addFields(
-      { name: "🃏 Best Hand", value: winner.bestHand },
+      { name: "🃏 Best Hand", value: bestHand },
       { name: "💰 Winnings", value: `${game.pot}` },
       { name: "📌 Strategy Tip", value: tip }
     )
-    .setColor(winner.id === userId ? "#00ff00" : "#ff0000");
+    .setColor(id === userId ? "#00ff00" : "#ff0000");
 
   await interaction.followUp({ embeds: [embed], components: [playAgainRow()] });
 
@@ -125,7 +125,7 @@ async function playPokerRound(interaction, game, userId) {
     await restartGame(i);
   });
 
-  if (winner.id === userId) {
+  if (id === userId) {
     await updateStreak(userId, "win");
   } else {
     await updateStreak(userId, "loss");
