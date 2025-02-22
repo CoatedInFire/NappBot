@@ -165,6 +165,10 @@ module.exports = {
       async function updateGame(interactionToUpdate) {
         let playerTotal = calculateHandValue(playerHand);
         if (playerTotal > 21) return dealerTurn();
+        if (playerTotal === 21) {
+          collector.stop();
+          return dealerTurn();
+        }
 
         let embed = new EmbedBuilder()
           .setTitle("🃏 Blackjack")
@@ -178,7 +182,8 @@ module.exports = {
           new ButtonBuilder()
             .setCustomId("hit")
             .setLabel("Hit")
-            .setStyle(ButtonStyle.Primary),
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(playerTotal >= 21),
           new ButtonBuilder()
             .setCustomId("stand")
             .setLabel("Stand")
@@ -187,7 +192,7 @@ module.exports = {
             .setCustomId("double")
             .setLabel("Double Down")
             .setStyle(ButtonStyle.Danger)
-            .setDisabled(bet * 2 > balanceData.balance),
+            .setDisabled(bet * 2 > balanceData.balance || playerTotal >= 21),
           new ButtonBuilder()
             .setCustomId("split")
             .setLabel("Split")
@@ -250,6 +255,7 @@ module.exports = {
           splitHand.push(drawCard(deck));
           await playSplitHand(i, splitHand);
         } else if (i.customId === "play_again") {
+          collector.stop();
           await restartGame(i);
         }
       });

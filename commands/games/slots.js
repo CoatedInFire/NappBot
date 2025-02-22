@@ -5,7 +5,7 @@ const {
   ButtonBuilder,
   ActionRowBuilder,
   ButtonStyle,
-  InteractionResponseFlags,
+  MessageFlags,
 } = require("discord.js");
 const {
   getUserBalance,
@@ -39,7 +39,7 @@ module.exports = {
       if (!balance || bet > balance.balance) {
         return interaction.reply({
           content: "❌ You don't have enough coins!",
-          flags: InteractionResponseFlags.EPHEMERAL,
+          flags: MessageFlags.EPHEMERAL,
         });
       }
 
@@ -146,7 +146,7 @@ module.exports = {
       console.error("Error executing /slots command:", error);
       await interaction.reply({
         content: "❌ An error occurred while executing the command.",
-        flags: InteractionResponseFlags.EPHEMERAL,
+        flags: MessageFlags.EPHEMERAL,
       });
     }
   },
