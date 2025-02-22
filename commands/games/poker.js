@@ -14,6 +14,7 @@ const {
 } = require("../../utils/database");
 const PokerGame = require("../../utils/pokerGame");
 const { getHandStrengthTip } = require("../../utils/pokerUtils");
+const PokerAI = require("../../utils/pokerai");
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -57,7 +58,7 @@ module.exports = {
         { id: userId, name: interaction.user.username, balance: betAmount },
       ];
       for (let i = 0; i < aiCount; i++) {
-        players.push(`AI_${i}`);
+        players.push(new PokerAI(`AI_${i + 1}`, "Exploitative"));
       }
 
       const game = new PokerGame(players, betAmount);
