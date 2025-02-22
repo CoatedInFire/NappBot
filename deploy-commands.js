@@ -5,6 +5,7 @@ const { REST, Routes } = require("discord.js");
 
 const clientId = process.env.CLIENT_ID;
 const token = process.env.TOKEN;
+const guildId = "1146990138656825415";
 
 if (!clientId || !token) {
   console.error("❌ Missing CLIENT_ID or TOKEN in environment variables.");
@@ -13,8 +14,7 @@ if (!clientId || !token) {
 
 console.log(`🔑 CLIENT_ID: ${clientId}`);
 console.log(`🔑 TOKEN: ${token ? "Provided" : "Not Provided"}`);
-
-const guildId = "1146990138656825415";
+console.log(`🛠️ Deploying commands to guild ${guildId}...`);
 
 function getCommandFiles(dir) {
   let files = [];
