@@ -70,7 +70,6 @@ for (const file of commandFiles) {
 
 console.log(`📜 Loaded ${client.commands.size} commands.`);
 
-// ✅ Load event files
 const eventFiles = fs
   .readdirSync("./events")
   .filter((file) => file.endsWith(".js"));
@@ -84,7 +83,6 @@ for (const file of eventFiles) {
   }
 }
 
-// ✅ Automatically deploy commands on startup
 exec("node deploy-commands.js", (error, stdout, stderr) => {
   if (error) {
     console.error(`❌ Command Deployment Error: ${error.message}`);
@@ -96,7 +94,6 @@ exec("node deploy-commands.js", (error, stdout, stderr) => {
   console.log(stdout);
 });
 
-// ✅ Walltaker Integration
 let lastPostedImages = {};
 let lastCheckImages = {};
 
