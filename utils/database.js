@@ -144,7 +144,7 @@ if (!databasePool) {
 }
 
 module.exports = {
-  databasePool,
+  database: databasePool,
   getUserPreference,
   setUserPreference,
   getUserBalance,
