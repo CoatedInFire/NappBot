@@ -1,3 +1,4 @@
+const path = require("path");
 const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const {
   getUserBalance,
@@ -12,7 +13,11 @@ module.exports = {
     .setName("work")
     .setDescription("💼 Work a shift and earn some coins!"),
 
+  modulePath: path.resolve(__filename),
+
   async execute(interaction) {
+    console.log(`⚡ Executing /work from: ${module.exports.modulePath}`);
+
     const userId = interaction.user.id;
 
     const lastWorkTime = await getUserLastWork(userId);

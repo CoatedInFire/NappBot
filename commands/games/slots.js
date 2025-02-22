@@ -11,7 +11,8 @@ const {
   getUserBalance,
   updateUserBalance,
   getUserStreak,
-  updateUserStreak,
+  updateWinStreak,
+  updateLossStreak,
 } = require("../../utils/database");
 
 module.exports = {
@@ -64,7 +65,17 @@ module.exports = {
       : streak <= 0
       ? streak - 1
       : -1;
-    await updateUserStreak(userId, newStreak);
+
+    if (newStreak > 0) {
+      await updateWinStreak(userId, newStreak);
+      await updateLossStreak(userId, 0);
+    } else if (newStreak < 0) {
+      await updateLossStreak(userId, Math.abs(newStreak));
+      await updateWinStreak(userId, 0);
+    } else {
+      await updateWinStreak(userId, 0);
+      await updateLossStreak(userId, 0);
+    }
 
     const embed = new EmbedBuilder()
       .setTitle("🎰 Slot Machine Results")

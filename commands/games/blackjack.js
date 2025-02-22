@@ -163,7 +163,7 @@ module.exports = {
     const message = await interaction.reply({
       embeds: [initialEmbed],
       components: [],
-      fetchReply: true,
+      withResponse: true,
     });
 
     async function updateGame(interactionToUpdate) {
@@ -194,7 +194,17 @@ module.exports = {
           .setDisabled(bet * 2 > balanceData.balance)
       );
 
-      await interactionToUpdate.update({ embeds: [embed], components: [row] });
+      if (interactionToUpdate.isMessageComponent()) {
+        await interactionToUpdate.update({
+          embeds: [embed],
+          components: [row],
+        });
+      } else {
+        await interactionToUpdate.editReply({
+          embeds: [embed],
+          components: [row],
+        });
+      }
     }
 
     const filter = (i) => i.user.id === userId;
@@ -221,7 +231,7 @@ module.exports = {
         collector.stop();
         await dealerTurn();
       } else if (i.customId === "play_again") {
-        await execute(i);
+        await module.exports.execute(i);
       }
     });
 
