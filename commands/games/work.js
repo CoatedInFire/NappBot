@@ -37,7 +37,7 @@ module.exports = {
     const earnings = Math.floor(Math.random() * (10000 - 2000 + 1)) + 2000;
     await updateUserBalance(userId, earnings);
 
-    const updatedBalance = await getUserBalance(userId);
+    const { balance: updatedBalance } = await getUserBalance(userId);
 
     const workMessages = [
       `👷 You worked as a **construction worker** and earned **🪙 ${earnings} coins**!`,
