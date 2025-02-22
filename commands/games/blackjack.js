@@ -125,20 +125,19 @@ module.exports = {
 
         await updateUserBalance(userId, earnings, 0);
 
+        let handStrengthTip = getHandStrengthTip(playerTotal);
+
         let embed = new EmbedBuilder()
           .setTitle("🃏 Blackjack Result")
           .setDescription(
-            `**Your Hand:** ${formatHand(playerHand)} (${playerTotal})\n` +
-              `**Dealer's Hand:** ${formatHand(
-                dealerHand
-              )} (${dealerTotal})\n\n` +
-              `**You ${result}!**\n` +
-              (earnings !== 0
-                ? `💰 **Earnings:** ${
-                    earnings > 0 ? "+" : ""
-                  }${earnings} coins\n`
-                : "") +
-              `🔥 **Streak:** ${await getUserStreak(userId)}`
+            `**Dealer's Hand:** ${formatHand(dealerHand)} (${dealerTotal})\n\n` +
+            `**Your Hand:** ${formatHand(playerHand)} (${playerTotal})\n\n` +
+            `**You ${result}!**\n` +
+            (earnings !== 0
+              ? `💰 **Earnings:** ${earnings > 0 ? "+" : ""}${earnings} coins\n`
+              : "") +
+            `🔥 **Streak:** ${await getUserStreak(userId)}\n\n` +
+            `**Tip:** ${handStrengthTip}`
           )
           .setColor(color);
 
@@ -150,6 +149,20 @@ module.exports = {
         );
 
         await interaction.editReply({ embeds: [embed], components: [row] });
+      }
+
+      function getHandStrengthTip(total) {
+        if (total <= 11) {
+          return "Your hand is weak. Consider hitting.";
+        } else if (total >= 12 && total <= 16) {
+          return "Your hand is moderate. Be cautious.";
+        } else if (total >= 17 && total <= 20) {
+          return "Your hand is strong. Consider standing.";
+        } else if (total === 21) {
+          return "Blackjack! You have the best hand.";
+        } else {
+          return "Your hand is over 21. You have busted.";
+        }
       }
 
       let initialEmbed = new EmbedBuilder()
