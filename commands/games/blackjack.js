@@ -320,6 +320,9 @@ async function playSplitHand(interaction, splitHand) {
     } else if (i.customId === "stand_split") {
       collector.stop();
       await dealerTurn();
+    } else if (i.customId === "play_again") {
+      collector.stop();
+      await restartGame(i);
     }
   });
 
