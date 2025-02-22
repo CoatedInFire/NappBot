@@ -114,7 +114,7 @@ module.exports = {
           await updateStreak(userId, "win");
         } else if (dealerTotal === playerTotal) {
           result = "pushed 🤝";
-          color = "#808080"; 
+          color = "#808080";
           earnings = 0;
         } else {
           result = "lost 💀";
@@ -134,7 +134,9 @@ module.exports = {
               )} (${dealerTotal})\n\n` +
               `**You ${result}!**\n` +
               (earnings !== 0
-                ? `💰 **Earnings:** ${earnings > 0 ? "+" : ""}${earnings} coins\n`
+                ? `💰 **Earnings:** ${
+                    earnings > 0 ? "+" : ""
+                  }${earnings} coins\n`
                 : "") +
               `🔥 **Streak:** ${await getUserStreak(userId)}`
           )
@@ -190,7 +192,10 @@ module.exports = {
             .setCustomId("split")
             .setLabel("Split")
             .setStyle(ButtonStyle.Success)
-            .setDisabled(playerHand.length !== 2 || playerHand[0].rank !== playerHand[1].rank)
+            .setDisabled(
+              playerHand.length !== 2 ||
+                playerHand[0].rank !== playerHand[1].rank
+            )
         );
 
         if (interactionToUpdate.isMessageComponent()) {
@@ -233,7 +238,7 @@ module.exports = {
           }
         } else if (i.customId === "stand") {
           collector.stop();
-          await dealerTurn(); 
+          await dealerTurn();
         } else if (i.customId === "double") {
           bet *= 2;
           playerHand.push(drawCard(deck));
@@ -308,7 +313,7 @@ async function playSplitHand(interaction, splitHand) {
       }
     } else if (i.customId === "stand_split") {
       collector.stop();
-      await dealerTurn(); 
+      await dealerTurn();
     }
   });
 

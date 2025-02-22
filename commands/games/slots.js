@@ -124,7 +124,10 @@ module.exports = {
       });
 
       async function restartGame(interaction) {
-        await interaction.editReply({ content: "🔄 Restarting game...", components: [] });
+        await interaction.editReply({
+          content: "🔄 Restarting game...",
+          components: [],
+        });
         setTimeout(async () => {
           await module.exports.execute(interaction);
         }, 1000);
