@@ -12,7 +12,9 @@ if (!clientId || !token) {
 }
 
 console.log(`🔑 CLIENT_ID: ${clientId}`);
-console.log(`🔑 TOKEN: ${token ? 'Provided' : 'Not Provided'}`);
+console.log(`🔑 TOKEN: ${token ? "Provided" : "Not Provided"}`);
+
+const guildId = "1146990138656825415";
 
 function getCommandFiles(dir) {
   let files = [];
@@ -51,18 +53,31 @@ const rest = new REST({ version: "10" }).setToken(token);
 
 (async () => {
   try {
-    console.log("🚨 Deleting old global commands...");
-    await rest.put(Routes.applicationCommands(clientId), { body: [] });
-    console.log("✅ Cleared old global commands!");
+    console.log(`🚨 Deleting old commands for guild ${guildId}...`);
+    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+      body: [],
+    });
+    console.log(`✅ Cleared old commands for guild ${guildId}!`);
 
     if (allCommands.length === 0) {
       console.warn("⚠️ No commands found to register. Skipping deployment...");
       return;
     }
 
+    console.log(
+      `🔄 Registering ${allCommands.length} commands for guild ${guildId}...`
+    );
+    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
+      body: allCommands,
+    });
+    console.log(`✅ Successfully registered commands for guild ${guildId}.`);
+
+    console.log("🚨 Deleting old global commands...");
+    await rest.put(Routes.applicationCommands(clientId), { body: [] });
+    console.log("✅ Cleared old global commands!");
+
     console.log(`🔄 Registering ${allCommands.length} global commands...`);
     await rest.put(Routes.applicationCommands(clientId), { body: allCommands });
-
     console.log("✅ Successfully registered global commands.");
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
