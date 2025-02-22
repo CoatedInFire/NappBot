@@ -11,8 +11,7 @@ const {
   getUserBalance,
   updateUserBalance,
   getUserStreak,
-  updateWinStreak,
-  updateLossStreak,
+  updateStreak,
   markUserActive,
 } = require("../../utils/database");
 
@@ -107,31 +106,24 @@ module.exports = {
         let result;
         let color;
         let earnings = 0;
-        let newStreak = { wins: 0, losses: 0 };
 
         if (dealerTotal > 21 || playerTotal > dealerTotal) {
           result = "won 🎉";
           color = "Green";
           earnings = bet;
-          newStreak.wins = (streakData.wins || 0) + 1;
+          await updateStreak(userId, "win");
         } else if (dealerTotal === playerTotal) {
           result = "pushed 🤝";
-          color = "Gray";
+          color = "#808080"; 
           earnings = 0;
         } else {
           result = "lost 💀";
           color = "Red";
           earnings = -bet;
-          newStreak.losses = (streakData.losses || 0) + 1;
+          await updateStreak(userId, "loss");
         }
 
         await updateUserBalance(userId, earnings, 0);
-
-        if (earnings > 0) {
-          await updateWinStreak(userId, newStreak.wins);
-        } else if (earnings < 0) {
-          await updateLossStreak(userId, newStreak.losses);
-        }
 
         let embed = new EmbedBuilder()
           .setTitle("🃏 Blackjack Result")
@@ -144,9 +136,7 @@ module.exports = {
               (earnings !== 0
                 ? `💰 **Earnings:** ${earnings > 0 ? "+" : ""}${earnings} coins\n`
                 : "") +
-              `🔥 **Win Streak:** ${newStreak.wins || 0} | ❄️ **Loss Streak:** ${
-                newStreak.losses || 0
-              }`
+              `🔥 **Streak:** ${await getUserStreak(userId)}`
           )
           .setColor(color);
 
@@ -243,7 +233,7 @@ module.exports = {
           }
         } else if (i.customId === "stand") {
           collector.stop();
-          await dealerTurn();
+          await dealerTurn(); 
         } else if (i.customId === "double") {
           bet *= 2;
           playerHand.push(drawCard(deck));
@@ -318,7 +308,7 @@ async function playSplitHand(interaction, splitHand) {
       }
     } else if (i.customId === "stand_split") {
       collector.stop();
-      await dealerTurn();
+      await dealerTurn(); 
     }
   });
 
