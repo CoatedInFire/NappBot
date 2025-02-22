@@ -19,7 +19,7 @@ function evaluateHand(hand) {
   if (!evaluation || !evaluation.handType) {
     console.error("Error in evaluateHand:", evaluation);
     return "Error evaluating hand";
-  }
+  ``
   return evaluation.handType;
 }
 
@@ -56,8 +56,8 @@ function getHandStrengthTip(handType) {
     "One Pair": "A decent hand, but be cautious of higher pairs.",
     "Two Pair": "A strong hand, consider raising.",
     "Three of a Kind": "A very strong hand, you should raise.",
-    Straight: "A powerful hand, definitely raise.",
-    Flush: "A very powerful hand, raise confidently.",
+    "Straight": "A powerful hand, definitely raise.",
+    "Flush": "A very powerful hand, raise confidently.",
     "Full House": "An extremely strong hand, raise aggressively.",
     "Four of a Kind": "Almost unbeatable, raise as much as possible.",
     "Straight Flush": "An incredibly rare hand, raise all-in.",
@@ -66,4 +66,4 @@ function getHandStrengthTip(handType) {
   return tips[handType] || "Play cautiously.";
 }
 
-module.exports = { evaluateHand, determineWinner, getHandStrengthTip };
+module.exports = { evaluateHand, determineWinner, getHandStrengthTip }};
