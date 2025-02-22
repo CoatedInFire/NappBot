@@ -12,9 +12,9 @@ let databasePool;
 try {
   const dbUri = new URL(dbUrl);
   const dbName = dbUri.pathname.replace("/", "").trim();
+  
   if (!dbName) {
-    console.error("❌ Invalid MySQL Database Name!");
-    process.exit(1);
+    throw new Error("Invalid MySQL Database Name");
   }
 
   databasePool = mysql.createPool({
@@ -36,181 +36,115 @@ try {
       console.log("✅ MySQL Connection Successful");
       conn.release();
     } catch (err) {
-      console.error(
-        "❌ MySQL Connection Test Failed:",
-        err.code,
-        "-",
-        err.sqlMessage
-      );
+      console.error("❌ MySQL Connection Test Failed:", err.message || err);
+      process.exit(1);
     }
   }
+
   testDatabaseConnection();
 } catch (error) {
-  console.error("❌ Failed to parse MySQL URL:", error.message);
+  console.error("❌ Failed to initialize MySQL:", error.message || error);
   process.exit(1);
 }
 
-async function getUserPreference(userId) {
+async function executeQuery(query, params = []) {
   try {
-    const [rows] = await databasePool.execute(
-      "SELECT preference FROM user_preferences WHERE user_id = ?",
-      [userId.trim()]
-    );
-    return rows.length > 0 ? rows[0].preference : "random";
+    const [rows] = await databasePool.execute(query, params);
+    return rows;
   } catch (error) {
-    console.error(
-      `❌ MySQL Error (getUserPreference): ${error.code} - ${error.sqlMessage}`
-    );
-    return "random";
+    console.error(`❌ MySQL Error: ${error.code || "Unknown"} - ${error.sqlMessage || error.message}`);
+    return null;
   }
+}
+
+async function getUserPreference(userId) {
+  const rows = await executeQuery(
+    "SELECT preference FROM user_preferences WHERE user_id = ?",
+    [userId.trim()]
+  );
+  return rows?.length ? rows[0].preference : "random";
 }
 
 async function setUserPreference(userId, preference) {
   if (!["male", "female", "random"].includes(preference)) return false;
-  try {
-    await databasePool.execute(
-      "INSERT INTO user_preferences (user_id, preference) VALUES (?, ?) ON DUPLICATE KEY UPDATE preference = ?;",
-      [userId, preference, preference]
-    );
-    return true;
-  } catch (error) {
-    console.error(
-      `❌ MySQL Error (setUserPreference): ${error.code} - ${error.sqlMessage}`
-    );
-    return false;
-  }
+  return !!(await executeQuery(
+    "INSERT INTO user_preferences (user_id, preference) VALUES (?, ?) ON DUPLICATE KEY UPDATE preference = ?",
+    [userId, preference, preference]
+  ));
 }
 
 async function getUserLastWork(userId) {
-  try {
-    const [rows] = await databasePool.execute(
-      "SELECT last_work FROM users WHERE user_id = ?",
-      [userId]
-    );
-    return rows.length > 0 ? rows[0].last_work : null;
-  } catch (error) {
-    console.error("❌ MySQL Error (getUserLastWork):", error);
-    return null;
-  }
+  const rows = await executeQuery(
+    "SELECT last_work FROM users WHERE user_id = ?",
+    [userId]
+  );
+  return rows?.length ? rows[0].last_work : null;
 }
 
 async function updateUserLastWork(userId) {
-  try {
-      await databasePool.execute(
-          "UPDATE users SET last_work = NOW() WHERE user_id = ?",
-          [userId]
-      );
-  } catch (error) {
-      console.error("❌ MySQL Error (updateUserLastWork):", error);
-  }
+  await executeQuery("UPDATE users SET last_work = NOW() WHERE user_id = ?", [userId]);
 }
 
 async function getUserBalance(userId) {
-  try {
-    const [rows] = await databasePool.execute(
-      "SELECT balance, bank_balance, streak FROM users WHERE user_id = ?",
-      [userId]
+  const rows = await executeQuery(
+    "SELECT balance, bank_balance, streak FROM users WHERE user_id = ?",
+    [userId]
+  );
+
+  if (!rows?.length) {
+    await executeQuery(
+      "INSERT INTO users (user_id, balance, bank_balance, streak) VALUES (?, ?, ?, 0)",
+      [userId, 5000, 0]
     );
-
-    if (rows.length === 0) {
-      await databasePool.execute(
-        "INSERT INTO users (user_id, balance, bank_balance, streak) VALUES (?, ?, ?, 0)",
-        [userId, 5000, 0]
-      );
-      return { balance: 5000, bank_balance: 0, streak: 0 };
-    }
-
-    return rows[0];
-  } catch (error) {
-    console.error("❌ MySQL Error (getUserBalance):", error);
-    return null;
+    return { balance: 5000, bank_balance: 0, streak: 0 };
   }
+
+  return rows[0];
 }
 
-async function updateUserBalance(userId, walletChange, bankChange) {
+async function updateUserBalance(userId, walletChange = 0, bankChange = 0) {
   if (!userId) {
     console.error("❌ updateUserBalance Error: userId is undefined or null.");
     return false;
   }
 
-  if (walletChange === undefined || bankChange === undefined) {
-    console.error(
-      "❌ updateUserBalance Error: walletChange or bankChange is undefined.",
-      { walletChange, bankChange }
-    );
-    return false;
-  }
-
-  try {
-    await databasePool.execute(
-      `UPDATE users 
-       SET balance = balance + ?, bank_balance = bank_balance + ? 
-       WHERE user_id = ?;`,
-      [walletChange, bankChange, userId]
-    );
-    return true;
-  } catch (error) {
-    console.error("❌ MySQL Error (updateUserBalance):", error);
-    return false;
-  }
+  return !!(await executeQuery(
+    `UPDATE users 
+     SET balance = balance + ?, bank_balance = bank_balance + ? 
+     WHERE user_id = ?`,
+    [walletChange, bankChange, userId]
+  ));
 }
 
 async function getUserStreak(userId) {
-  try {
-    const [rows] = await databasePool.execute(
-      "SELECT streak FROM users WHERE user_id = ?",
-      [userId]
-    );
-    return rows.length ? rows[0].streak : 0;
-  } catch (error) {
-    console.error("❌ MySQL Error (getUserStreak):", error);
-    return 0;
-  }
+  const rows = await executeQuery("SELECT streak FROM users WHERE user_id = ?", [userId]);
+  return rows?.length ? rows[0].streak : 0;
 }
 
 async function updateStreak(userId, result) {
   if (!userId || !["win", "loss"].includes(result)) {
-    console.error(
-      `❌ updateStreak Error: Invalid userId or result - ${userId}, ${result}`
-    );
+    console.error(`❌ updateStreak Error: Invalid userId or result - ${userId}, ${result}`);
     return false;
   }
 
-  try {
-    if (result === "win") {
-      await databasePool.execute(
-        "UPDATE users SET streak = GREATEST(streak + 1, 1) WHERE user_id = ?",
-        [userId]
-      );
-    } else if (result === "loss") {
-      await databasePool.execute(
-        "UPDATE users SET streak = LEAST(streak - 1, -1) WHERE user_id = ?",
-        [userId]
-      );
-    }
-    return true;
-  } catch (error) {
-    console.error(
-      `❌ MySQL Error (updateStreak): ${error.code} - ${error.sqlMessage}`
-    );
-    return false;
-  }
+  const query = result === "win"
+    ? "UPDATE users SET streak = GREATEST(streak + 1, 1) WHERE user_id = ?"
+    : "UPDATE users SET streak = LEAST(streak - 1, -1) WHERE user_id = ?";
+
+  return !!(await executeQuery(query, [userId]));
 }
 
-
 async function markUserActive(userId) {
-  try {
-    await database.execute(
-      "UPDATE users SET active_last = NOW() WHERE user_id = ?",
-      [userId]
-    );
-  } catch (error) {
-    console.error("❌ MySQL Error (markUserActive):", error);
-  }
+  await executeQuery("UPDATE users SET active_last = NOW() WHERE user_id = ?", [userId]);
+}
+
+if (!databasePool) {
+  console.error("❌ MySQL connection pool failed to initialize.");
+  process.exit(1);
 }
 
 module.exports = {
-  databasePool: databasePool,
+  databasePool,
   getUserPreference,
   setUserPreference,
   getUserBalance,
