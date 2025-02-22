@@ -38,36 +38,44 @@ module.exports = {
   modulePath: path.resolve(__filename),
 
   async execute(interaction) {
-    await interaction.deferReply();
+    try {
+      await interaction.deferReply();
 
-    const userId = interaction.user.id;
-    const betAmount = interaction.options.getInteger("bet");
-    const aiCount = interaction.options.getInteger("players") || 0;
-    const userBalance = await getUserBalance(userId);
-    const userStreak = await getUserStreak(userId);
+      const userId = interaction.user.id;
+      const betAmount = interaction.options.getInteger("bet");
+      const aiCount = interaction.options.getInteger("players") || 0;
+      const userBalance = await getUserBalance(userId);
+      const userStreak = await getUserStreak(userId);
 
-    if (userBalance.balance < betAmount) {
-      return interaction.editReply("❌ You don't have enough money to bet!");
-    }
+      if (userBalance.balance < betAmount) {
+        return interaction.editReply("❌ You don't have enough money to bet!");
+      }
 
-    await updateUserBalance(userId, -betAmount, 0);
+      await updateUserBalance(userId, -betAmount, 0);
 
-    const players = [
-      { id: userId, name: interaction.user.username, balance: betAmount },
-    ];
-    for (let i = 0; i < aiCount; i++) {
-      players.push(`AI_${i}`);
-    }
+      const players = [
+        { id: userId, name: interaction.user.username, balance: betAmount },
+      ];
+      for (let i = 0; i < aiCount; i++) {
+        players.push(`AI_${i}`);
+      }
 
-    const game = new PokerGame(players, betAmount);
+      const game = new PokerGame(players, betAmount);
 
-    await interaction.followUp(
-      `🔥 **Current Streak:** ${userStreak} Wins in a Row!`
-    );
+      await interaction.followUp(
+        `🔥 **Current Streak:** ${userStreak} Wins in a Row!`
+      );
 
-    let gameState = await playPokerRound(interaction, game, userId);
-    if (gameState === "completed") {
-      await interaction.followUp("🎉 Game Over! Thanks for playing.");
+      let gameState = await playPokerRound(interaction, game, userId);
+      if (gameState === "completed") {
+        await interaction.followUp("🎉 Game Over! Thanks for playing.");
+      }
+    } catch (error) {
+      console.error("Error executing /poker command:", error);
+      await interaction.reply({
+        content: "❌ An error occurred while executing the command.",
+        flags: InteractionFlags.EPHEMERAL,
+      });
     }
   },
 };
@@ -160,13 +168,22 @@ async function handleUserTurn(interaction, player, game) {
       time: 30000,
     });
 
+    let action = collected.customId;
+    let amount = 0;
+
+    if (action === "raise") {
+      amount = game.currentBet * 2;
+    } else if (action === "call") {
+      amount = game.currentBet;
+    }
+
     game.handleAction(player, {
-      action: collected.customId,
-      amount: game.currentBet * 2,
+      action: action,
+      amount: amount,
     });
 
     await collected.update({
-      content: `${player.name} chose **${collected.customId.toUpperCase()}**`,
+      content: `${player.name} chose **${action.toUpperCase()}**`,
       components: [],
     });
   } catch {
@@ -175,7 +192,10 @@ async function handleUserTurn(interaction, player, game) {
 }
 
 async function restartGame(interaction) {
-  await interaction.editReply({ content: "🔄 Restarting game...", components: [] });
+  await interaction.editReply({
+    content: "🔄 Restarting game...",
+    components: [],
+  });
   setTimeout(async () => {
     await module.exports.execute(interaction);
   }, 1000);

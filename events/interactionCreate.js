@@ -15,14 +15,14 @@ module.exports = {
       await command.execute(interaction);
     } catch (error) {
       console.error(`❌ Error executing ${interaction.commandName}:`, error);
-      await interaction
-        .reply({
+      try {
+        await interaction.reply({
           content: "❌ An error occurred while executing this command.",
           ephemeral: true,
-        })
-        .catch(() =>
-          interaction.editReply({ content: "❌ An error occurred." })
-        );
+        });
+      } catch (err) {
+        console.error("❌ Error sending error reply:", err);
+      }
     }
   },
 };

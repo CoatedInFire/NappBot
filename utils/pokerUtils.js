@@ -37,4 +37,20 @@ function determineWinner(players, communityCards) {
   return { winner, evaluatedHands };
 }
 
-module.exports = { evaluateHand, determineWinner };
+function getHandStrengthTip(handType) {
+  const tips = {
+    "High Card": "Consider folding if the bet is high.",
+    "One Pair": "A decent hand, but be cautious of higher pairs.",
+    "Two Pair": "A strong hand, consider raising.",
+    "Three of a Kind": "A very strong hand, you should raise.",
+    Straight: "A powerful hand, definitely raise.",
+    Flush: "A very powerful hand, raise confidently.",
+    "Full House": "An extremely strong hand, raise aggressively.",
+    "Four of a Kind": "Almost unbeatable, raise as much as possible.",
+    "Straight Flush": "An incredibly rare hand, raise all-in.",
+    "Royal Flush": "The best possible hand, go all-in.",
+  };
+  return tips[handType] || "Play cautiously.";
+}
+
+module.exports = { evaluateHand, determineWinner, getHandStrengthTip };

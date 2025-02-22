@@ -215,8 +215,8 @@ async function monitorWalltakerChanges() {
 client.once("ready", async () => {
   console.log("✅ Bot is fully loaded and ready to go!");
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-  setInterval(monitorWalltakerChanges, 30 * 1000); //
-  setInterval(postWalltakerImages, 15 * 60 * 1000); //
+  setInterval(monitorWalltakerChanges, 30 * 1000); 
+  setInterval(postWalltakerImages, 15 * 60 * 1000); 
 });
 
 client.login(TOKEN);
@@ -228,3 +228,11 @@ database
     console.error("❌ MySQL Connection Error:", err);
     process.exit(1);
   });
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught Exception:", error);
+});
