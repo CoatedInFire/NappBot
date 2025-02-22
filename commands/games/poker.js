@@ -13,6 +13,7 @@ const {
   getUserStreak,
   updateUserStreak,
 } = require("../../utils/database");
+const { evaluateHand, determineWinner } = require("../../utils/pokerUtils");
 
 const POKER_STARTING_BLIND = 100;
 const AI_NAMES = ["Omni", "Kaden", "Dusty", "Crayon"];
@@ -235,7 +236,79 @@ module.exports = {
 
         await bettingRound();
       } else {
-        await determineWinner();
+        const { winner, evaluatedHands } = determineWinner(
+          players,
+          communityCards
+        ); // Call determineWinner
+
+        if (winner) {
+          winner.chips += pot;
+          if (winner.id === interaction.user.id) {
+            await updateUserBalance(userId, pot, 0);
+            await updateUserStreak(userId, "win");
+          } else {
+            await updateUserStreak(userId, "loss");
+          }
+
+          const embed = new EmbedBuilder()
+            .setTitle("♠️ Poker Game Over")
+            .setDescription(
+              `🏆 Winner: **${winner.name}** with **${
+                winner.handRanking || "Unknown"
+              }**!`
+            ) // Use winner.handRanking or a default
+            .addFields(
+              { name: "💰 Pot", value: `${pot} Chips`, inline: true },
+              {
+                name: "Player Chips",
+                value: players.map((p) => `${p.name}: ${p.chips}`).join("\n"),
+                inline: true,
+              },
+              {
+                name: "Community Cards",
+                value: communityCards
+                  .map((c) => `${c.value}${c.suit}`)
+                  .join(" "),
+                inline: true,
+              },
+              {
+                name: "Hands Played",
+                value: evaluatedHands
+                  .map((h) => `${h.player}: ${h.hand} (${h.ranking})`)
+                  .join("\n"),
+              }
+            )
+            .setColor("Gold");
+
+          await interaction.editReply({ embeds: [embed] });
+        } else {
+          const embed = new EmbedBuilder()
+            .setTitle("♠️ Poker Game Over")
+            .setDescription("No winner. All players folded or it's a tie.")
+            .addFields(
+              { name: "💰 Pot", value: `${pot} Chips`, inline: true },
+              {
+                name: "Player Chips",
+                value: players.map((p) => `${p.name}: ${p.chips}`).join("\n"),
+                inline: true,
+              },
+              {
+                name: "Community Cards",
+                value: communityCards
+                  .map((c) => `${c.value}${c.suit}`)
+                  .join(" "),
+                inline: true,
+              },
+              {
+                name: "Hands Played",
+                value: evaluatedHands
+                  .map((h) => `${h.player}: ${h.hand} (${h.ranking})`)
+                  .join("\n"),
+              }
+            )
+            .setColor("Gold");
+          await interaction.editReply({ embeds: [embed] });
+        }
       }
     }
 
