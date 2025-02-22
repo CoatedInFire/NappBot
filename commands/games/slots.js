@@ -122,10 +122,17 @@ module.exports = {
       time: 30000,
     });
 
+    async function restartGame(interaction) {
+      await interaction.editReply({ content: "🔄 Restarting game...", components: [] });
+      setTimeout(async () => {
+        await module.exports.execute(interaction);
+      }, 1000);
+    }
+
     collector.on("collect", async (i) => {
       await i.deferUpdate();
       collector.stop();
-      await module.exports.execute(i);
+      await restartGame(i);
     });
 
     collector.on("end", async () => {

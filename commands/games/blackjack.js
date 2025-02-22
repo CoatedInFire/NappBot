@@ -207,6 +207,13 @@ module.exports = {
       }
     }
 
+    async function restartGame(interaction) {
+      await interaction.editReply({ content: "🔄 Restarting game...", components: [] });
+      setTimeout(async () => {
+        await module.exports.execute(interaction);
+      }, 1000);
+    }
+
     const filter = (i) => i.isButton() && i.user.id === userId;
     const collector = interaction.channel.createMessageComponentCollector({
       filter,
@@ -231,7 +238,7 @@ module.exports = {
         collector.stop();
         await dealerTurn();
       } else if (i.customId === "play_again") {
-        await module.exports.execute(i);
+        await restartGame(i);
       }
     });
 

@@ -105,6 +105,18 @@ async function playPokerRound(interaction, game, userId) {
 
   await interaction.followUp({ embeds: [embed], components: [playAgainRow()] });
 
+  const filter = (i) => i.customId === "play_again" && i.user.id === userId;
+  const collector = interaction.channel.createMessageComponentCollector({
+    filter,
+    time: 30000,
+  });
+
+  collector.on("collect", async (i) => {
+    await i.deferUpdate();
+    collector.stop();
+    await restartGame(i);
+  });
+
   if (winner.id === userId) {
     await updateStreak(userId, "win");
   } else {
@@ -160,6 +172,13 @@ async function handleUserTurn(interaction, player, game) {
   } catch {
     game.handleAction(player, { action: "fold" });
   }
+}
+
+async function restartGame(interaction) {
+  await interaction.editReply({ content: "🔄 Restarting game...", components: [] });
+  setTimeout(async () => {
+    await module.exports.execute(interaction);
+  }, 1000);
 }
 
 function playAgainRow() {

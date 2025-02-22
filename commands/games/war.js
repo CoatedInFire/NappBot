@@ -179,15 +179,17 @@ async function playWar(interaction, userId, bet) {
   collector.on("collect", async (i) => {
     await i.deferUpdate();
     collector.stop();
-
-    await i.editReply({ content: "🔄 Restarting game...", components: [] });
-
-    setTimeout(async () => {
-      await playWar(interaction, userId, bet);
-    }, 1000);
+    await restartGame(i, userId, bet);
   });
 
   collector.on("end", async () => {
     await interaction.editReply({ components: [] });
   });
+}
+
+async function restartGame(interaction, userId, bet) {
+  await interaction.editReply({ content: "🔄 Restarting game...", components: [] });
+  setTimeout(async () => {
+    await playWar(interaction, userId, bet);
+  }, 1000);
 }
