@@ -62,7 +62,7 @@ async function getUserPreference(userId) {
     "SELECT preference FROM user_preferences WHERE user_id = ?",
     [userId.trim()]
   );
-  return rows?.length ? rows[0].preference : "random";
+  return rows?.length ? rows[0].preference : null;
 }
 
 async function setUserPreference(userId, preference) {

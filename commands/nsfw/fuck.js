@@ -125,12 +125,19 @@ module.exports = {
       const stringRecipientId = String(trimmedRecipientId);
       let type = await getUserPreference(stringRecipientId);
 
-      if (type === null) {
+      if (type === null || type === "random") {
         console.log("No explicit preference found, choosing randomly.");
         const validTypes = ["male", "female"];
         type = validTypes[Math.floor(Math.random() * validTypes.length)];
       } else {
         console.log(`Explicit preference found: ${type}`);
+      }
+
+      if (type !== "female") {
+        const senderPreference = await getUserPreference(sender.id.trim());
+        if (senderPreference === "female") {
+          type = "female";
+        }
       }
 
       let pose = interaction.options.getString("pose");
