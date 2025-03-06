@@ -49,9 +49,6 @@ module.exports = {
     const biteMessages = [
       `${sender} bites ${recipient} playfully! 🦷`,
       `😈 ${sender} gives ${recipient} a mischievous bite!`,
-      `${sender} bites ${recipient} gently! Ouch! 🥴`,
-      `Chomp! ${sender} bites ${recipient} fiercely! 😬`,
-      `${sender} can't resist and bites ${recipient} on the arm! 🦷`,
     ];
 
     const randomGif = biteGifs[Math.floor(Math.random() * biteGifs.length)];
