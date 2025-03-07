@@ -105,10 +105,12 @@ for (const file of eventFiles) {
   }
 }
 
-// Register commands first, then log in
 (async () => {
   await registerCommands();
-  client.login(TOKEN);
+  client
+    .login(TOKEN)
+    .then(() => console.log("✅ Bot logged in successfully!"))
+    .catch((err) => console.error("❌ Bot failed to log in:", err));
 })();
 
 client.once("ready", async () => {
