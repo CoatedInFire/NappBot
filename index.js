@@ -68,6 +68,15 @@ async function registerCommands() {
         console.log(`✅ Loaded command: ${command.data.name}`);
       } else {
         console.warn(`⚠️ Skipping invalid command file: ${file}`);
+        if (!command?.data?.name) {
+          console.warn(`   ❌ Missing data.name`);
+        }
+        if (!command?.execute) {
+          console.warn(`   ❌ Missing execute function`);
+        }
+        if (command?.data && !command.data.toJSON) {
+          console.warn(`   ❌ data object missing toJSON method`);
+        }
       }
     } catch (error) {
       console.error(`❌ Error loading command file: ${file}`, error);
@@ -75,11 +84,6 @@ async function registerCommands() {
   }
 
   console.log(`📜 Loaded ${client.commands.size} commands.`);
-
-  if (client.commands.size === 0) {
-    console.warn("⚠️ No commands found. Skipping registration.");
-    return;
-  }
 
   try {
     console.log(`📜 Registering ${client.commands.size} commands...`);
@@ -202,8 +206,6 @@ async function monitorWalltakerChanges() {
 client.once("ready", async () => {
   console.log("✅ Bot is fully loaded and ready to go!");
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-
-  await registerCommands();
 
   setInterval(monitorWalltakerChanges, 30 * 1000);
 });
