@@ -5,18 +5,16 @@ const {
   GatewayIntentBits,
   REST,
   Routes,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const { database } = require("./utils/database");
 const { fetchWalltakerImage } = require("./utils/fetchWalltaker");
 const { getE621PostId } = require("./utils/e621API");
-const {
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-} = require("discord.js");
 const {
   getLastPostedImage,
   saveLastPostedImage,
@@ -43,6 +41,11 @@ const client = new Client({
 
 client.commands = new Collection();
 
+/**
+ * Recursively retrieves command files from the given directory.
+ * @param {string} dir - Directory to search for commands.
+ * @returns {string[]} List of command file paths.
+ */
 function getCommandFiles(dir) {
   let files = [];
   fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
@@ -56,17 +59,16 @@ function getCommandFiles(dir) {
   return files;
 }
 
-const commandFiles = getCommandFiles(path.join(__dirname, "commands"));
 
 async function registerCommands() {
   const rest = new REST({ version: "10" }).setToken(TOKEN);
   const commands = [];
+  const commandFiles = getCommandFiles(path.join(__dirname, "commands"));
 
   for (const file of commandFiles) {
     try {
       const command = require(file);
       if (command?.data?.name && command?.execute) {
-        command.filePath = file;
         client.commands.set(command.data.name, command);
         commands.push(command.data.toJSON());
         console.log(`✅ Loaded command: ${command.data.name}`);
@@ -91,7 +93,6 @@ async function registerCommands() {
   }
 }
 
-// Load event files
 const eventFiles = fs
   .readdirSync("./events")
   .filter((file) => file.endsWith(".js"));
@@ -107,24 +108,19 @@ for (const file of eventFiles) {
 
 (async () => {
   await registerCommands();
-  client
-    .login(TOKEN)
-    .then(() => {
-      console.log("✅ Bot logged in successfully!");
-
-      client.once("ready", async () => {
-        console.log("✅ Bot is fully loaded and ready to go!");
-        console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-        setInterval(monitorWalltakerChanges, 30 * 1000);
-        setInterval(postWalltakerImages, 15 * 60 * 1000);
-      });
-    })
-    .catch((err) => console.error("❌ Bot failed to log in:", err));
+  try {
+    await client.login(TOKEN);
+    console.log("✅ Bot logged in successfully!");
+  } catch (err) {
+    console.error("❌ Bot failed to log in:", err);
+    process.exit(1);
+  }
 })();
 
-let lastPostedImages = {};
-let lastCheckImages = {};
-
+/**
+ * Fetches all Walltaker settings from the database.
+ * @returns {Promise<Array>} Walltaker settings data.
+ */
 async function fetchWalltakerSettings() {
   try {
     const [rows] = await database.execute("SELECT * FROM walltaker_settings;");
@@ -169,10 +165,8 @@ async function postWalltakerImages() {
         `🆕 New Walltaker image detected for guild ${guild_id}, sending now!`
       );
       await saveLastPostedImage(guild_id, cleanImageUrl);
-      lastPostedImages[guild_id] = cleanImageUrl;
 
       const updatedByUser = lastUpdatedBy?.trim() || "anon";
-
       const e621PostId = await getE621PostId(cleanImageUrl);
       const e621PostUrl = e621PostId
         ? `https://e621.net/posts/${e621PostId}`
@@ -207,7 +201,6 @@ async function postWalltakerImages() {
       }
 
       const row = new ActionRowBuilder().addComponents(...buttons);
-
       await channel.send({ embeds: [embed], components: [row] });
     } catch (error) {
       console.error(
@@ -218,27 +211,16 @@ async function postWalltakerImages() {
   }
 }
 
+
 async function monitorWalltakerChanges() {
-  const settings = await fetchWalltakerSettings();
-
-  for (const { guild_id, feed_id } of settings) {
-    try {
-      const imageData = await fetchWalltakerImage(feed_id);
-      if (!imageData) continue;
-
-      const { imageUrl } = imageData;
-
-      if (lastCheckImages[guild_id] !== imageUrl) {
-        console.log(
-          `🚨 Change detected in Walltaker feed ${feed_id} for guild ${guild_id}, posting immediately!`
-        );
-        await postWalltakerImages();
-      }
-    } catch (error) {
-      console.error(`❌ Error checking Walltaker feed ${feed_id}:`, error);
-    }
-  }
+  await postWalltakerImages();
 }
+
+client.once("ready", () => {
+  console.log("✅ Bot is fully loaded and ready to go!");
+  console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
+  setInterval(monitorWalltakerChanges, 30 * 1000);
+});
 
 database
   .query("SELECT 1")
