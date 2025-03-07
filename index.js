@@ -41,11 +41,6 @@ const client = new Client({
 
 client.commands = new Collection();
 
-/**
- * Recursively retrieves command files from the given directory.
- * @param {string} dir - Directory to search for commands.
- * @returns {string[]} List of command file paths.
- */
 function getCommandFiles(dir) {
   let files = [];
   fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
@@ -58,7 +53,6 @@ function getCommandFiles(dir) {
   });
   return files;
 }
-
 
 async function registerCommands() {
   const rest = new REST({ version: "10" }).setToken(TOKEN);
@@ -106,21 +100,6 @@ for (const file of eventFiles) {
   }
 }
 
-(async () => {
-  await registerCommands();
-  try {
-    await client.login(TOKEN);
-    console.log("✅ Bot logged in successfully!");
-  } catch (err) {
-    console.error("❌ Bot failed to log in:", err);
-    process.exit(1);
-  }
-})();
-
-/**
- * Fetches all Walltaker settings from the database.
- * @returns {Promise<Array>} Walltaker settings data.
- */
 async function fetchWalltakerSettings() {
   try {
     const [rows] = await database.execute("SELECT * FROM walltaker_settings;");
@@ -211,24 +190,28 @@ async function postWalltakerImages() {
   }
 }
 
-
 async function monitorWalltakerChanges() {
   await postWalltakerImages();
 }
 
-client.once("ready", () => {
+client.once("ready", async () => {
   console.log("✅ Bot is fully loaded and ready to go!");
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
+
   setInterval(monitorWalltakerChanges, 30 * 1000);
 });
 
-database
-  .query("SELECT 1")
-  .then(() => console.log("✅ Connected to MySQL!"))
-  .catch((err) => {
-    console.error("❌ MySQL Connection Error:", err);
+(async () => {
+  try {
+    await database.query("SELECT 1");
+    console.log("✅ Connected to MySQL!");
+    await client.login(TOKEN);
+    console.log("✅ Bot logged in successfully!");
+  } catch (err) {
+    console.error("❌ Error:", err);
     process.exit(1);
-  });
+  }
+})();
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
