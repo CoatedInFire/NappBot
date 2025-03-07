@@ -1,5 +1,11 @@
 require("dotenv").config();
-const { Client, Collection, GatewayIntentBits, REST, Routes } = require("discord.js");
+const {
+  Client,
+  Collection,
+  GatewayIntentBits,
+  REST,
+  Routes,
+} = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const { database } = require("./utils/database");
@@ -77,12 +83,15 @@ async function registerCommands() {
   try {
     console.log(`📜 Registering ${client.commands.size} commands...`);
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-    console.log(`✅ Successfully registered ${client.commands.size} global commands.`);
+    console.log(
+      `✅ Successfully registered ${client.commands.size} global commands.`
+    );
   } catch (error) {
     console.error("❌ Error registering commands:", error);
   }
 }
 
+// Load event files
 const eventFiles = fs
   .readdirSync("./events")
   .filter((file) => file.endsWith(".js"));
@@ -96,15 +105,18 @@ for (const file of eventFiles) {
   }
 }
 
+// Register commands first, then log in
+(async () => {
+  await registerCommands();
+  client.login(TOKEN);
+})();
+
 client.once("ready", async () => {
   console.log("✅ Bot is fully loaded and ready to go!");
-  await registerCommands();
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-  setInterval(monitorWalltakerChanges, 30 * 1000); 
-  setInterval(postWalltakerImages, 15 * 60 * 1000); 
+  setInterval(monitorWalltakerChanges, 30 * 1000);
+  setInterval(postWalltakerImages, 15 * 60 * 1000);
 });
-
-client.login(TOKEN);
 
 let lastPostedImages = {};
 let lastCheckImages = {};
