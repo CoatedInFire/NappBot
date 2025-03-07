@@ -17,12 +17,18 @@ console.log(`🛠️ Deploying commands globally...`);
 
 function getCommandFiles(dir) {
   let files = [];
+  console.log(`🔍 Searching for command files in: ${dir}`); // Added log
   fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
     const fullPath = path.join(dir, entry.name);
+    console.log(`🔍 Found entry: ${entry.name}, fullPath: ${fullPath}`); // Added log
     if (entry.isDirectory()) {
+      console.log(`📁 Entry is a directory: ${entry.name}`); // Added log
       files = files.concat(getCommandFiles(fullPath));
     } else if (entry.name.endsWith(".js")) {
+      console.log(`📄 Entry is a command file: ${entry.name}`); // Added log
       files.push(fullPath);
+    } else {
+      console.log(` skipping ${entry.name}`);
     }
   });
   return files;
@@ -36,6 +42,7 @@ const allCommands = [];
 
 for (const file of commandFiles) {
   try {
+    console.log(`Attempting to load command from: ${file}`); // Added log
     const command = require(file);
     if (command?.data?.toJSON) {
       allCommands.push(command.data.toJSON());

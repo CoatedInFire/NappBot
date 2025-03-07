@@ -76,6 +76,11 @@ async function registerCommands() {
 
   console.log(`📜 Loaded ${client.commands.size} commands.`);
 
+  if (client.commands.size === 0) {
+    console.warn("⚠️ No commands found. Skipping registration.");
+    return;
+  }
+
   try {
     console.log(`📜 Registering ${client.commands.size} commands...`);
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
