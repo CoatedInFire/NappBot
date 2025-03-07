@@ -2,7 +2,6 @@ require("dotenv").config();
 const { Client, Collection, GatewayIntentBits, REST, Routes } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
-const { exec } = require("child_process");
 const { database } = require("./utils/database");
 const { fetchWalltakerImage } = require("./utils/fetchWalltaker");
 const { getE621PostId } = require("./utils/e621API");
@@ -53,22 +52,36 @@ function getCommandFiles(dir) {
 
 const commandFiles = getCommandFiles(path.join(__dirname, "commands"));
 
-for (const file of commandFiles) {
-  try {
-    const command = require(file);
-    if (command?.data?.name && command?.execute) {
-      command.filePath = file;
-      client.commands.set(command.data.name, command);
-      console.log(`✅ Loaded command: ${command.data.name}`);
-    } else {
-      console.warn(`⚠️ Skipping invalid command file: ${file}`);
+async function registerCommands() {
+  const rest = new REST({ version: "10" }).setToken(TOKEN);
+  const commands = [];
+
+  for (const file of commandFiles) {
+    try {
+      const command = require(file);
+      if (command?.data?.name && command?.execute) {
+        command.filePath = file;
+        client.commands.set(command.data.name, command);
+        commands.push(command.data.toJSON());
+        console.log(`✅ Loaded command: ${command.data.name}`);
+      } else {
+        console.warn(`⚠️ Skipping invalid command file: ${file}`);
+      }
+    } catch (error) {
+      console.error(`❌ Error loading command file: ${file}`, error);
     }
+  }
+
+  console.log(`📜 Loaded ${client.commands.size} commands.`);
+
+  try {
+    console.log(`📜 Registering ${client.commands.size} commands...`);
+    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
+    console.log(`✅ Successfully registered ${client.commands.size} global commands.`);
   } catch (error) {
-    console.error(`❌ Error loading command file: ${file}`, error);
+    console.error("❌ Error registering commands:", error);
   }
 }
-
-console.log(`📜 Loaded ${client.commands.size} commands.`);
 
 const eventFiles = fs
   .readdirSync("./events")
@@ -83,39 +96,15 @@ for (const file of eventFiles) {
   }
 }
 
-const rest = new REST({ version: "10" }).setToken(TOKEN);
-
-(async () => {
-  try {
-    console.log("🚨 Deleting old global commands...");
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
-    console.log("✅ Cleared old global commands!");
-
-    const allCommands = client.commands.map((command) => command.data.toJSON());
-
-    if (allCommands.length === 0) {
-      console.warn("⚠️ No commands found to register. Skipping deployment...");
-      return;
-    }
-
-    console.log(`🔄 Registering ${allCommands.length} global commands...`);
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: allCommands });
-    console.log("✅ Successfully registered global commands!");
-  } catch (error) {
-    console.error("❌ Error deploying global commands:", error);
-  }
-})();
-
-exec("node deploy-commands.js", (error, stdout, stderr) => {
-  if (error) {
-    console.error(`❌ Command Deployment Error: ${error.message}`);
-    return;
-  }
-  if (stderr) {
-    console.error(`⚠️ Command Deployment Warning: ${stderr}`);
-  }
-  console.log(stdout);
+client.once("ready", async () => {
+  console.log("✅ Bot is fully loaded and ready to go!");
+  await registerCommands();
+  console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
+  setInterval(monitorWalltakerChanges, 30 * 1000); 
+  setInterval(postWalltakerImages, 15 * 60 * 1000); 
 });
+
+client.login(TOKEN);
 
 let lastPostedImages = {};
 let lastCheckImages = {};
@@ -234,15 +223,6 @@ async function monitorWalltakerChanges() {
     }
   }
 }
-
-client.once("ready", async () => {
-  console.log("✅ Bot is fully loaded and ready to go!");
-  console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-  setInterval(monitorWalltakerChanges, 30 * 1000); 
-  setInterval(postWalltakerImages, 15 * 60 * 1000); 
-});
-
-client.login(TOKEN);
 
 database
   .query("SELECT 1")
