@@ -170,6 +170,7 @@ async function registerCommands() {
     try {
       const command = require(file);
       if (command?.data?.name && command?.execute) {
+        command.filePath = file;
         client.commands.set(command.data.name, command);
         commands.push(command.data.toJSON());
         console.log(`✅ Loaded command: ${command.data.name}`);
