@@ -2,7 +2,6 @@ const fs = require("fs");
 const path = require("path");
 const { REST, Routes } = require("discord.js");
 
-
 const clientId = process.env.CLIENT_ID;
 const token = process.env.TOKEN;
 
