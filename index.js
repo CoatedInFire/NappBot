@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { Client, Collection, GatewayIntentBits } = require("discord.js");
+const { Client, Collection, GatewayIntentBits, REST, Routes } = require("discord.js");
 const fs = require("fs");
 const path = require("path");
 const { exec } = require("child_process");
@@ -82,6 +82,29 @@ for (const file of eventFiles) {
     client.on(event.name, (...args) => event.execute(...args, client));
   }
 }
+
+const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+(async () => {
+  try {
+    console.log("🚨 Deleting old global commands...");
+    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
+    console.log("✅ Cleared old global commands!");
+
+    const allCommands = client.commands.map((command) => command.data.toJSON());
+
+    if (allCommands.length === 0) {
+      console.warn("⚠️ No commands found to register. Skipping deployment...");
+      return;
+    }
+
+    console.log(`🔄 Registering ${allCommands.length} global commands...`);
+    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: allCommands });
+    console.log("✅ Successfully registered global commands!");
+  } catch (error) {
+    console.error("❌ Error deploying global commands:", error);
+  }
+})();
 
 exec("node deploy-commands.js", (error, stdout, stderr) => {
   if (error) {
