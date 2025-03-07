@@ -54,48 +54,6 @@ function getCommandFiles(dir) {
   return files;
 }
 
-async function registerCommands() {
-  const rest = new REST({ version: "10" }).setToken(TOKEN);
-  const commands = [];
-  const commandFiles = getCommandFiles(path.join(__dirname, "commands"));
-
-  for (const file of commandFiles) {
-    try {
-      const command = require(file);
-      if (command?.data?.name && command?.execute) {
-        client.commands.set(command.data.name, command);
-        commands.push(command.data.toJSON());
-        console.log(`✅ Loaded command: ${command.data.name}`);
-      } else {
-        console.warn(`⚠️ Skipping invalid command file: ${file}`);
-        if (!command?.data?.name) {
-          console.warn(`   ❌ Missing data.name`);
-        }
-        if (!command?.execute) {
-          console.warn(`   ❌ Missing execute function`);
-        }
-        if (command?.data && !command.data.toJSON) {
-          console.warn(`   ❌ data object missing toJSON method`);
-        }
-      }
-    } catch (error) {
-      console.error(`❌ Error loading command file: ${file}`, error);
-    }
-  }
-
-  console.log(`📜 Loaded ${client.commands.size} commands.`);
-
-  try {
-    console.log(`📜 Registering ${client.commands.size} commands...`);
-    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-    console.log(
-      `✅ Successfully registered ${client.commands.size} global commands.`
-    );
-  } catch (error) {
-    console.error("❌ Error registering commands:", error);
-  }
-}
-
 const eventFiles = fs
   .readdirSync("./events")
   .filter((file) => file.endsWith(".js"));
@@ -201,6 +159,48 @@ async function postWalltakerImages() {
 
 async function monitorWalltakerChanges() {
   await postWalltakerImages();
+}
+
+async function registerCommands() {
+  const rest = new REST({ version: "10" }).setToken(TOKEN);
+  const commands = [];
+  const commandFiles = getCommandFiles(path.join(__dirname, "commands"));
+
+  for (const file of commandFiles) {
+    try {
+      const command = require(file);
+      if (command?.data?.name && command?.execute) {
+        client.commands.set(command.data.name, command);
+        commands.push(command.data.toJSON());
+        console.log(`✅ Loaded command: ${command.data.name}`);
+      } else {
+        console.warn(`⚠️ Skipping invalid command file: ${file}`);
+        if (!command?.data?.name) {
+          console.warn(`   ❌ Missing data.name`);
+        }
+        if (!command?.execute) {
+          console.warn(`   ❌ Missing execute function`);
+        }
+        if (command?.data && !command.data.toJSON) {
+          console.warn(`   ❌ data object missing toJSON method`);
+        }
+      }
+    } catch (error) {
+      console.error(`❌ Error loading command file: ${file}`, error);
+    }
+  }
+
+  console.log(`📜 Loaded ${client.commands.size} commands.`);
+
+  try {
+    console.log(`📜 Registering ${client.commands.size} commands...`);
+    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
+    console.log(
+      `✅ Successfully registered ${client.commands.size} global commands.`
+    );
+  } catch (error) {
+    console.error("❌ Error registering commands:", error);
+  }
 }
 
 client.once("ready", async () => {
