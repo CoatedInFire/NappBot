@@ -207,6 +207,7 @@ client.once("ready", async () => {
   console.log("✅ Bot is fully loaded and ready to go!");
   console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
 
+  await registerCommands();
   setInterval(monitorWalltakerChanges, 30 * 1000);
 });
 
