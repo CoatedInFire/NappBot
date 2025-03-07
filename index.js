@@ -109,16 +109,18 @@ for (const file of eventFiles) {
   await registerCommands();
   client
     .login(TOKEN)
-    .then(() => console.log("✅ Bot logged in successfully!"))
+    .then(() => {
+      console.log("✅ Bot logged in successfully!");
+
+      client.once("ready", async () => {
+        console.log("✅ Bot is fully loaded and ready to go!");
+        console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
+        setInterval(monitorWalltakerChanges, 30 * 1000);
+        setInterval(postWalltakerImages, 15 * 60 * 1000);
+      });
+    })
     .catch((err) => console.error("❌ Bot failed to log in:", err));
 })();
-
-client.once("ready", async () => {
-  console.log("✅ Bot is fully loaded and ready to go!");
-  console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-  setInterval(monitorWalltakerChanges, 30 * 1000);
-  setInterval(postWalltakerImages, 15 * 60 * 1000);
-});
 
 let lastPostedImages = {};
 let lastCheckImages = {};
