@@ -18,7 +18,7 @@ const {
   saveLastPostedImage,
 } = require("./commands/utility/setwalltaker.js");
 const { deployCommands } = require("./deploy-commands");
-const { clearInterestTimers } = require("./utils/interest"); // Import the function
+const { clearInterestTimers } = require("./utils/interest");
 
 require("./server");
 
@@ -157,7 +157,7 @@ async function postWalltakerImages() {
       console.log("✅ Bot logged in successfully!");
     } catch (loginError) {
       console.error("❌ Error logging in:", loginError);
-      process.exit(1);
+      // process.exit(1);  <- Remove this line
     }
   }
 })();

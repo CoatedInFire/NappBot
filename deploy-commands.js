@@ -80,8 +80,6 @@ async function deployCommands() {
     console.timeEnd("RegisterCommands");
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
-  } finally {
-    console.log("✅ Command deployment process completed.");
   }
 }
 
