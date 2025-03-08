@@ -44,6 +44,7 @@ for (const file of commandFiles) {
     }
   } catch (error) {
     console.error(`❌ Error loading command file: ${file}`, error);
+    process.exit(1);
   }
 }
 
@@ -51,19 +52,21 @@ const rest = new REST({ version: "10" }).setToken(token);
 
 (async () => {
   try {
+    if (allCommands.length === 0) {
+      console.warn("⚠️ No commands found to register. Skipping deployment...");
+      process.exit(0);
+    }
+    
     console.log("🚨 Deleting old global commands...");
     await rest.put(Routes.applicationCommands(clientId), { body: [] });
     console.log("✅ Cleared old global commands!");
 
-    if (allCommands.length === 0) {
-      console.warn("⚠️ No commands found to register. Skipping deployment...");
-      return;
-    }
-
     console.log(`🔄 Registering ${allCommands.length} global commands...`);
     await rest.put(Routes.applicationCommands(clientId), { body: allCommands });
     console.log("✅ Successfully registered global commands.");
+    process.exit(0);
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
+    process.exit(1);
   }
 })();
