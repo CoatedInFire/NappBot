@@ -1,4 +1,3 @@
-const { REST, Routes } = require("discord.js");
 const { applyInterest } = require("../utils/interest");
 const fs = require("fs");
 const path = require("path");
@@ -31,68 +30,9 @@ module.exports = {
     console.log("💰 Starting hourly bank interest system...");
     setInterval(applyInterest, 60 * 60 * 1000);
 
-    function getCommandFiles(dir) {
-      let files = [];
-      fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          files = files.concat(getCommandFiles(fullPath));
-        } else if (entry.name.endsWith(".js")) {
-          files.push(fullPath);
-        }
-      });
-      return files;
-    }
-
-    async function registerCommands() {
-      const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
-      const commands = [];
-      const commandFiles = getCommandFiles(path.join(__dirname, "commands"));
-    
-      for (const file of commandFiles) {
-        try {
-          const command = require(file);
-          if (command?.data?.name && command?.execute) {
-            command.filePath = file;
-            client.commands.set(command.data.name, command);
-            commands.push(command.data.toJSON());
-            console.log(`✅ Loaded command: ${command.data.name}`);
-          } else {
-            console.warn(`⚠️ Skipping invalid command file: ${file}`);
-            if (!command?.data?.name) {
-              console.warn(`   ❌ Missing data.name`);
-            }
-            if (!command?.execute) {
-              console.warn(`   ❌ Missing execute function`);
-            }
-            if (command?.data && !command.data.toJSON) {
-              console.warn(`   ❌ data object missing toJSON method`);
-            }
-          }
-        } catch (error) {
-          console.error(`❌ Error loading command file: ${file}`, error);
-        }
-      }
-    
-      console.log(`📜 Loaded ${client.commands.size} commands.`);
-    
-      try {
-        console.log(`📜 Registering ${client.commands.size} commands...`);
-        await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: commands });
-        console.log(
-          `✅ Successfully registered ${client.commands.size} global commands.`
-        );
-      } catch (error) {
-        console.error("❌ Error registering commands:", error);
-      }
-    }
-
     async function monitorWalltakerChanges() {
       await postWalltakerImages();
     }
-
-    // Call registerCommands here, after the bot is ready
-    await registerCommands();
 
     setInterval(monitorWalltakerChanges, 30 * 1000);
   },
