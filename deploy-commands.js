@@ -44,7 +44,6 @@ for (const file of commandFiles) {
     }
   } catch (error) {
     console.error(`❌ Error loading command file: ${file}`, error);
-    process.exit(1);
   }
 }
 

@@ -148,7 +148,12 @@ async function postWalltakerImages() {
   try {
     await database.query("SELECT 1");
     console.log("✅ Connected to MySQL!");
-    await deployCommands();
+    try {
+      await deployCommands();
+      console.log("✅ Command deployment completed successfully.");
+    } catch (deployError) {
+      console.error("❌ Command deployment failed:", deployError);
+    }
   } catch (err) {
     console.error("❌ Error:", err);
   } finally {
@@ -157,7 +162,6 @@ async function postWalltakerImages() {
       console.log("✅ Bot logged in successfully!");
     } catch (loginError) {
       console.error("❌ Error logging in:", loginError);
-      // process.exit(1);  <- Remove this line
     }
   }
 })();
