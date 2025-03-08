@@ -18,6 +18,7 @@ const {
   saveLastPostedImage,
 } = require("./commands/utility/setwalltaker.js");
 const { deployCommands } = require("./deploy-commands");
+const { clearInterestTimers } = require("./utils/interest"); // Import the function
 
 require("./server");
 
@@ -148,14 +149,23 @@ async function postWalltakerImages() {
     await database.query("SELECT 1");
     console.log("✅ Connected to MySQL!");
     await deployCommands();
-
-    await client.login(TOKEN);
-    console.log("✅ Bot logged in successfully!");
   } catch (err) {
     console.error("❌ Error:", err);
-    process.exit(1);
+  } finally {
+    try {
+      await client.login(TOKEN);
+      console.log("✅ Bot logged in successfully!");
+    } catch (loginError) {
+      console.error("❌ Error logging in:", loginError);
+      process.exit(1);
+    }
   }
 })();
+
+process.on("beforeExit", (code) => {
+  console.log(`⚠️ Process is about to exit with code: ${code}`);
+  clearInterestTimers(); // Clear the interest timers
+});
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);

@@ -81,12 +81,20 @@ async function applyInterest() {
   }
 }
 
+let initialTimeout;
+const hourlyInterval = setInterval(applyInterest, 60 * 60 * 1000);
 
-setTimeout(async () => {
+initialTimeout = setTimeout(async () => {
   if (!(await wasInterestAppliedRecently())) {
     await applyInterest();
   }
 }, 5000);
 
-setInterval(applyInterest, 60 * 60 * 1000);
-module.exports = { applyInterest };
+module.exports = {
+  applyInterest,
+  clearInterestTimers: () => {
+    clearInterval(hourlyInterval);
+    clearTimeout(initialTimeout);
+    console.log("🛑 Cleared interest timers.");
+  },
+};
