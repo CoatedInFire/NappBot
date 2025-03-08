@@ -17,6 +17,7 @@ const {
   getLastPostedImage,
   saveLastPostedImage,
 } = require("./commands/utility/setwalltaker.js");
+const { deployCommands } = require("./deploy-commands");
 
 require("./server");
 
@@ -146,6 +147,8 @@ async function postWalltakerImages() {
   try {
     await database.query("SELECT 1");
     console.log("✅ Connected to MySQL!");
+    await deployCommands();
+
     await client.login(TOKEN);
     console.log("✅ Bot logged in successfully!");
   } catch (err) {

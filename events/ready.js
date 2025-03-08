@@ -7,7 +7,9 @@ module.exports = {
   async execute(client) {
     console.log(`✅ Logged in as ${client.user.tag}`);
     console.log(`🌐 Serving ${client.guilds.cache.size} guilds`);
-    console.log(`📋 Number of commands: ${client.commands ? client.commands.size : 0}`);
+    console.log(
+      `📋 Number of commands: ${client.commands ? client.commands.size : 0}`
+    );
     if (!client.commands || client.commands.size === 0) {
       console.warn("⚠️ No commands found. Skipping registration.");
       return;
@@ -21,8 +23,8 @@ module.exports = {
     }
 
     console.log(`🔑 CLIENT_ID: ${process.env.CLIENT_ID}`);
-    console.log(`🔑 TOKEN: ${process.env.TOKEN ? 'Provided' : 'Not Provided'}`);
-    
+    console.log(`🔑 TOKEN: ${process.env.TOKEN ? "Provided" : "Not Provided"}`);
+
     try {
       console.log(`📜 Registering ${client.commands.size} commands...`);
       const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);

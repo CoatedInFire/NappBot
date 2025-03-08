@@ -50,11 +50,11 @@ for (const file of commandFiles) {
 
 const rest = new REST({ version: "10" }).setToken(token);
 
-(async () => {
+async function deployCommands() {
   try {
     if (allCommands.length === 0) {
       console.warn("⚠️ No commands found to register. Skipping deployment...");
-      process.exit(0);
+      return;
     }
 
     console.log("🚨 Deleting old global commands...");
@@ -62,11 +62,14 @@ const rest = new REST({ version: "10" }).setToken(token);
     console.log("✅ Cleared old global commands!");
 
     console.log(`🔄 Registering ${allCommands.length} global commands...`);
-    const result = await rest.put(Routes.applicationCommands(clientId), { body: allCommands });
+    const result = await rest.put(Routes.applicationCommands(clientId), {
+      body: allCommands,
+    });
     console.log("✅ Successfully registered global commands:", result);
-    process.exit(0);
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
-    process.exit(1);
+    throw error;
   }
-})();
+}
+
+module.exports = { deployCommands };
