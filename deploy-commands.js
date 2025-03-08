@@ -56,14 +56,14 @@ const rest = new REST({ version: "10" }).setToken(token);
       console.warn("⚠️ No commands found to register. Skipping deployment...");
       process.exit(0);
     }
-    
+
     console.log("🚨 Deleting old global commands...");
     await rest.put(Routes.applicationCommands(clientId), { body: [] });
     console.log("✅ Cleared old global commands!");
 
     console.log(`🔄 Registering ${allCommands.length} global commands...`);
-    await rest.put(Routes.applicationCommands(clientId), { body: allCommands });
-    console.log("✅ Successfully registered global commands.");
+    const result = await rest.put(Routes.applicationCommands(clientId), { body: allCommands });
+    console.log("✅ Successfully registered global commands:", result);
     process.exit(0);
   } catch (error) {
     console.error("❌ Error deploying commands:", error);

@@ -1,6 +1,5 @@
+const { REST, Routes } = require("discord.js");
 const { applyInterest } = require("../utils/interest");
-const fs = require("fs");
-const path = require("path");
 
 module.exports = {
   name: "ready",
@@ -8,10 +7,7 @@ module.exports = {
   async execute(client) {
     console.log(`✅ Logged in as ${client.user.tag}`);
     console.log(`🌐 Serving ${client.guilds.cache.size} guilds`);
-    console.log(
-      `📋 Number of commands: ${client.commands ? client.commands.size : 0}`
-    );
-
+    console.log(`📋 Number of commands: ${client.commands ? client.commands.size : 0}`);
     if (!client.commands || client.commands.size === 0) {
       console.warn("⚠️ No commands found. Skipping registration.");
       return;
@@ -25,15 +21,26 @@ module.exports = {
     }
 
     console.log(`🔑 CLIENT_ID: ${process.env.CLIENT_ID}`);
-    console.log(`🔑 TOKEN: ${process.env.TOKEN ? "Provided" : "Not Provided"}`);
+    console.log(`🔑 TOKEN: ${process.env.TOKEN ? 'Provided' : 'Not Provided'}`);
+    
+    try {
+      console.log(`📜 Registering ${client.commands.size} commands...`);
+      const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+
+      const commands = client.commands.map((cmd) => cmd.data.toJSON());
+
+      await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), {
+        body: commands,
+      });
+
+      console.log(
+        `✅ Successfully registered ${client.commands.size} global commands.`
+      );
+    } catch (error) {
+      console.error("❌ Error registering commands:", error);
+    }
 
     console.log("💰 Starting hourly bank interest system...");
     setInterval(applyInterest, 60 * 60 * 1000);
-
-    async function monitorWalltakerChanges() {
-      await postWalltakerImages();
-    }
-
-    setInterval(monitorWalltakerChanges, 30 * 1000);
   },
 };
