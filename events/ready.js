@@ -1,5 +1,7 @@
 const { REST, Routes } = require("discord.js");
 const { applyInterest } = require("../utils/interest");
+const fs = require("fs");
+const path = require("path");
 
 module.exports = {
   name: "ready",
@@ -28,6 +30,19 @@ module.exports = {
 
     console.log("💰 Starting hourly bank interest system...");
     setInterval(applyInterest, 60 * 60 * 1000);
+
+    function getCommandFiles(dir) {
+      let files = [];
+      fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          files = files.concat(getCommandFiles(fullPath));
+        } else if (entry.name.endsWith(".js")) {
+          files.push(fullPath);
+        }
+      });
+      return files;
+    }
 
     async function registerCommands() {
       const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
@@ -70,6 +85,10 @@ module.exports = {
       } catch (error) {
         console.error("❌ Error registering commands:", error);
       }
+    }
+
+    async function monitorWalltakerChanges() {
+      await postWalltakerImages();
     }
 
     // Call registerCommands here, after the bot is ready

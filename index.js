@@ -3,8 +3,6 @@ const {
   Client,
   Collection,
   GatewayIntentBits,
-  REST,
-  Routes,
   EmbedBuilder,
   ActionRowBuilder,
   ButtonBuilder,
@@ -40,19 +38,6 @@ const client = new Client({
 });
 
 client.commands = new Collection();
-
-function getCommandFiles(dir) {
-  let files = [];
-  fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      files = files.concat(getCommandFiles(fullPath));
-    } else if (entry.name.endsWith(".js")) {
-      files.push(fullPath);
-    }
-  });
-  return files;
-}
 
 const eventFiles = fs
   .readdirSync("./events")
@@ -156,17 +141,6 @@ async function postWalltakerImages() {
     }
   }
 }
-
-async function monitorWalltakerChanges() {
-  await postWalltakerImages();
-}
-
-client.once("ready", async () => {
-  console.log("✅ Bot is fully loaded and ready to go!");
-  console.log("🕵️‍♂️ Starting Walltaker image monitoring...");
-
-  setInterval(monitorWalltakerChanges, 30 * 1000);
-});
 
 (async () => {
   try {
