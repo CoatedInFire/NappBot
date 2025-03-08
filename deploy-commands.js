@@ -51,6 +51,10 @@ const rest = new REST({ version: "10" }).setToken(token);
 
 (async () => {
   try {
+    console.log("🚨 Deleting old global commands...");
+    await rest.put(Routes.applicationCommands(clientId), { body: [] });
+    console.log("✅ Cleared old global commands!");
+
     if (allCommands.length === 0) {
       console.warn("⚠️ No commands found to register. Skipping deployment...");
       return;

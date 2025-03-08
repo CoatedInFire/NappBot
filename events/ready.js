@@ -7,7 +7,10 @@ module.exports = {
   async execute(client) {
     console.log(`✅ Logged in as ${client.user.tag}`);
     console.log(`🌐 Serving ${client.guilds.cache.size} guilds`);
-    console.log(`📋 Number of commands: ${client.commands ? client.commands.size : 0}`);
+    console.log(
+      `📋 Number of commands: ${client.commands ? client.commands.size : 0}`
+    );
+
     if (!client.commands || client.commands.size === 0) {
       console.warn("⚠️ No commands found. Skipping registration.");
       return;
@@ -21,13 +24,19 @@ module.exports = {
     }
 
     console.log(`🔑 CLIENT_ID: ${process.env.CLIENT_ID}`);
-    console.log(`🔑 TOKEN: ${process.env.TOKEN ? 'Provided' : 'Not Provided'}`);
-    
+    console.log(`🔑 TOKEN: ${process.env.TOKEN ? "Provided" : "Not Provided"}`);
+
+    console.log("💰 Starting hourly bank interest system...");
+    setInterval(applyInterest, 60 * 60 * 1000);
+
+    // Call registerCommands here, after the bot is ready
     try {
       console.log(`📜 Registering ${client.commands.size} commands...`);
       const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
 
       const commands = client.commands.map((cmd) => cmd.data.toJSON());
+
+      console.log(`Commands to register:`, commands); // Log the commands
 
       await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), {
         body: commands,
@@ -40,7 +49,6 @@ module.exports = {
       console.error("❌ Error registering commands:", error);
     }
 
-    console.log("💰 Starting hourly bank interest system...");
-    setInterval(applyInterest, 60 * 60 * 1000);
+    setInterval(monitorWalltakerChanges, 30 * 1000);
   },
 };
