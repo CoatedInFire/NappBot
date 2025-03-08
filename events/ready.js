@@ -25,23 +25,6 @@ module.exports = {
     console.log(`🔑 CLIENT_ID: ${process.env.CLIENT_ID}`);
     console.log(`🔑 TOKEN: ${process.env.TOKEN ? "Provided" : "Not Provided"}`);
 
-    try {
-      console.log(`📜 Registering ${client.commands.size} commands...`);
-      const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
-
-      const commands = client.commands.map((cmd) => cmd.data.toJSON());
-
-      await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), {
-        body: commands,
-      });
-
-      console.log(
-        `✅ Successfully registered ${client.commands.size} global commands.`
-      );
-    } catch (error) {
-      console.error("❌ Error registering commands:", error);
-    }
-
     console.log("💰 Starting hourly bank interest system...");
     setInterval(applyInterest, 60 * 60 * 1000);
   },

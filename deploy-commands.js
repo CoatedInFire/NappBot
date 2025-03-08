@@ -58,13 +58,17 @@ async function deployCommands() {
     }
 
     console.log("🚨 Deleting old global commands...");
+    console.time("DeleteOldCommands");
     await rest.put(Routes.applicationCommands(clientId), { body: [] });
+    console.timeEnd("DeleteOldCommands");
     console.log("✅ Cleared old global commands!");
 
     console.log(`🔄 Registering ${allCommands.length} global commands...`);
+    console.time("RegisterCommands");
     const result = await rest.put(Routes.applicationCommands(clientId), {
       body: allCommands,
     });
+    console.timeEnd("RegisterCommands");
     console.log("✅ Successfully registered global commands:", result);
   } catch (error) {
     console.error("❌ Error deploying commands:", error);
