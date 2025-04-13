@@ -1,15 +1,21 @@
-require('dotenv').config(); // Load environment variables from .env
+require('dotenv').config();
 const fs = require('node:fs');
 const path = require('node:path');
 const { REST, Routes } = require('discord.js');
 
-// Load environment variables
+// Load from your existing environment variables
 const clientId = process.env.CLIENT_ID;
-const guildId = process.env.GUILD_ID;
-const token = process.env.TOKEN;
+const guildId = process.env.GUILD_ID; // <- You didn't list this in your env — I'll explain below.
+const token = process.env.DISCORD_TOKEN;
 
-if (!clientId || !guildId || !token) {
-    console.error('Missing CLIENT_ID, GUILD_ID, or TOKEN in environment variables.');
+if (!clientId || !token) {
+    console.error('Missing CLIENT_ID or DISCORD_TOKEN in environment variables.');
+    process.exit(1);
+}
+
+// Note: guildId is optional only if you intend to deploy global commands — otherwise you need this set.
+if (!guildId) {
+    console.warn('No GUILD_ID provided — commands will not deploy without a target guild.');
     process.exit(1);
 }
 
